@@ -1,0 +1,111 @@
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "builder": "NIXPACKS"
+  },
+  "deploy": {
+    "numReplicas": 1,
+    "sleepApplication": false,
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 10
+  },
+  "environments": {
+    "production": {
+      "variables": {
+        "RAILWAY_ENVIRONMENT": "production",
+        "DEBUG": "False",
+        "API_HOST": "0.0.0.0",
+        "PORT": "$PORT"
+      }
+    },
+    "staging": {
+      "variables": {
+        "RAILWAY_ENVIRONMENT": "staging",
+        "DEBUG": "True",
+        "API_HOST": "0.0.0.0",
+        "PORT": "$PORT"
+      }
+    }
+  },
+  "services": {
+    "backend": {
+      "source": "./backend",
+      "build": {
+        "watchPatterns": [
+          "**/*.py"
+        ]
+      },
+      "deploy": {
+        "startCommand": "uvicorn app.main:app --host 0.0.0.0 --port $PORT",
+        "healthcheckPath": "/health",
+        "healthcheckTimeout": 100
+      },
+      "variables": {
+        "OPENAI_API_KEY": "$OPENAI_API_KEY",
+        "MEM0_API_KEY": "$MEM0_API_KEY",
+        "MEM0_USER_ID": "$MEM0_USER_ID",
+        "SUPABASE_URL": "$SUPABASE_URL",
+        "SUPABASE_ANON_KEY": "$SUPABASE_ANON_KEY",
+        "SUPABASE_SERVICE_ROLE_KEY": "$SUPABASE_SERVICE_ROLE_KEY",
+        "JWT_SECRET_KEY": "$JWT_SECRET_KEY",
+        "REDIS_URL": "$REDIS_URL",
+        "DATABASE_URL": "$DATABASE_URL",
+        "MONTHLY_BUDGET_LIMIT": "$MONTHLY_BUDGET_LIMIT",
+        "COST_ALERT_THRESHOLD": "$COST_ALERT_THRESHOLD",
+        "ADMIN_EMAIL": "$ADMIN_EMAIL",
+        "ADMIN_PASSWORD": "$ADMIN_PASSWORD"
+      }
+    },
+    "mcp_server": {
+      "source": "./mcp_server",
+      "build": {
+        "watchPatterns": [
+          "**/*.py"
+        ]
+      },
+      "deploy": {
+        "startCommand": "python server.py",
+        "healthcheckPath": "/health",
+        "healthcheckTimeout": 100
+      },
+      "variables": {
+        "OPENAI_API_KEY": "$OPENAI_API_KEY",
+        "MEM0_API_KEY": "$MEM0_API_KEY",
+        "MEM0_USER_ID": "$MEM0_USER_ID",
+        "REDIS_URL": "$REDIS_URL",
+        "MCP_SERVER_HOST": "0.0.0.0",
+        "MCP_SERVER_PORT": "$PORT"
+      }
+    },
+    "frontend": {
+      "source": "./frontend",
+      "build": {
+        "watchPatterns": [
+          "**/*.ts",
+          "**/*.tsx",
+          "**/*.js",
+          "**/*.jsx"
+        ]
+      },
+      "deploy": {
+        "startCommand": "npm run build && npx serve -s build -l $PORT",
+        "healthcheckPath": "/",
+        "healthcheckTimeout": 100
+      },
+      "variables": {
+        "REACT_APP_API_URL": "$BACKEND_URL",
+        "REACT_APP_SUPABASE_URL": "$SUPABASE_URL",
+        "REACT_APP_SUPABASE_ANON_KEY": "$SUPABASE_ANON_KEY",
+        "GENERATE_SOURCEMAP": "false"
+      }
+    }
+  },
+  "plugins": {
+    "postgresql": {
+      "plan": "hobby"
+    },
+    "redis": {
+      "plan": "hobby"
+    }
+  }
+}
