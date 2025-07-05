@@ -100,4 +100,4 @@ marshmallow==3.20.2
 http-status==1.0.0
 
 # Type hints
-typing-extensions==4.8.0
+typing-extensions>=4.11,<5
