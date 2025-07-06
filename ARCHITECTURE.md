@@ -123,16 +123,30 @@ def check_transfer_triggers(message: str, current_agent: Agent):
 
 ### Memory Architecture
 
-**Dwupoziomowa pamięć:**
+**Dwupoziomowa pamięć z 4 trybami pracy:**
+
 1. **Redis** (krótkoterminowa)
-   - Cache sesji
+   - Cache sesji z konfiguralnym TTL
    - Stan konwersacji
-   - Szybki dostęp
+   - Szybki dostęp bez dodatkowych kosztów
 
 2. **Mem0 API** (długoterminowa)
    - Historia relacji
    - Wzorce zachowań
    - Insights między sesjami
+
+**Memory Modes:**
+- **Cache First**: Minimalne koszty, 1 retrieval per sesja
+- **Always Fresh**: Maksymalna dokładność, retrieval per wiadomość
+- **Smart Triggers**: Balans - retrieval przy ważnych eventach
+- **Test Mode**: Porównanie wydajności wszystkich trybów
+
+**Smart Triggers** (konfigurowalne):
+- Co N wiadomości
+- Po X minutach
+- Przy zmianie agenta
+- Przy skoku emocji (keywords)
+- Przy zmianie tematu
 
 ### Database Schema
 

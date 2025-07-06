@@ -1,6 +1,6 @@
 # RELATRIX Progress Tracker
 
-## Ostatnia aktualizacja: 2025-07-06 20:45 CET
+## Ostatnia aktualizacja: 2025-07-06 21:30 CET
 
 ## Status projektu: 40% Complete
 
@@ -163,6 +163,7 @@ RELATRIX_V1/
 ## Changelog
 
 ### 2025-07-06
+- **21:30** - Zaplanowano Memory Modes (4 tryby pracy Redis/Mem0)
 - **20:45** - Zaplanowano Admin Panel bez analizy semantycznej
 - **19:30** - Utworzono PROGRESS_TRACKER.md
 - **17:10** - [5f04770] Usunięto niepotrzebną kolumnę capabilities
@@ -194,6 +195,12 @@ RELATRIX_V1/
 - **api.ts** - Warstwa komunikacji z backendem, typy TypeScript
 - **chat.ts** - Definicje typów dla agentów i wiadomości
 
+### Memory System (Redis + Mem0)
+- **Mode A: Cache First** - 1 retrieval na start, cache przez sesję
+- **Mode B: Always Fresh** - Retrieval przy każdej wiadomości
+- **Mode C: Smart Triggers** - Retrieval na start + przy triggerach
+- **Mode D: Test Mode** - Porównanie kosztów wszystkich trybów
+
 ### Database (PostgreSQL)
 - **agents** - 7 agentów z system prompts i transfer triggers
 - **chat_sessions** - Sesje użytkowników
@@ -218,10 +225,10 @@ RELATRIX_V1/
 
 ## Next Steps (Priorytety)
 
-1. **Dopracowanie Redis/Mem0** [CRITICAL]
-   - Implementacja retrieval strategies
-   - Konfigurowalny cache TTL
-   - Panel konfiguracji w adminie
+1. **Memory Modes Implementation** [CRITICAL]
+   - 4 tryby pracy: Cache First, Always Fresh, Smart Triggers, Test Mode
+   - Pełna kontrola z admin panel
+   - Monitoring kosztów i wydajności
 
 2. **Admin Panel - Backend** [CRITICAL]
    - Dashboard API endpoints
