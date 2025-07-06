@@ -41,11 +41,13 @@ from .api import agents_router
 from .api.chat import router as chat_router
 from .api.memory import router as memory_router
 from .api.admin_migration import router as admin_migration_router
+from .api.admin_migration_v2 import router as admin_migration_v2_router
 
 app.include_router(agents_router)
 app.include_router(chat_router, prefix="/api", tags=["chat"])
 app.include_router(memory_router, prefix="/api/memory", tags=["memory"])
 app.include_router(admin_migration_router, prefix="/api/admin", tags=["admin"])
+app.include_router(admin_migration_v2_router, prefix="/api/admin", tags=["admin"])
 
 # Request/Response models
 class HealthResponse(BaseModel):

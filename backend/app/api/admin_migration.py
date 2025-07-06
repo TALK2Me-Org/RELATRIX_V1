@@ -42,22 +42,29 @@ async def run_memory_modes_migration(
         # Create sync engine for migration
         sync_engine = create_engine(settings.database_url)
         
-        # Execute migration
-        with sync_engine.connect() as conn:
+        # Execute migration with proper transaction handling
+        with sync_engine.begin() as conn:  # This auto-commits at the end
             # Split by statements and execute each
             statements = [s.strip() for s in migration_sql.split(';') if s.strip()]
             
-            for statement in statements:
+            for i, statement in enumerate(statements):
                 if statement:
                     try:
+                        # Skip comments
+                        if statement.strip().startswith('--'):
+                            continue
+                        
                         conn.execute(text(statement))
-                        conn.commit()
+                        
                     except Exception as e:
                         error_msg = str(e)
                         if "already exists" in error_msg:
-                            results["warnings"].append(f"Object already exists (skipped)")
+                            results["warnings"].append(f"Statement {i+1}: Object already exists (skipped)")
                         else:
-                            results["errors"].append(error_msg[:200])  # Truncate long errors
+                            # For other errors, raise to rollback transaction
+                            logger.error(f"Migration error on statement {i+1}: {error_msg}")
+                            results["errors"].append(f"Statement {i+1}: {error_msg[:200]}")
+                            raise  # This will rollback the transaction
             
             # Verify what was created
             result = conn.execute(text("""
