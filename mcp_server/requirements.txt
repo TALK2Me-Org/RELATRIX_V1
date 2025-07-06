@@ -6,14 +6,14 @@ uvicorn==0.24.0
 redis==5.0.1
 
 # Authentication
-supabase==2.0.1
+supabase>=2.0.1
 
 # AI and LLM
 openai==1.33.0
 mem0ai>=0.0.13
 
 # HTTP Client
-httpx>=0.27.0
+# httpx version will be resolved by pip based on MCP and Supabase needs
 
 # Data Processing
 pydantic>=2.7.3
