@@ -5,13 +5,13 @@ Centralized configuration management for the application
 
 import os
 from typing import Optional, List, Dict, Any
-from pydantic import BaseSettings, Field, validator
-from pydantic_settings import BaseSettings as Settings
+from pydantic import Field, validator
+from pydantic_settings import BaseSettings
 import logging
 
 logger = logging.getLogger(__name__)
 
-class Settings(Settings):
+class Settings(BaseSettings):
     """Application settings with validation"""
     
     # Application Settings
