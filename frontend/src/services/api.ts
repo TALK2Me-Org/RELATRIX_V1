@@ -33,8 +33,8 @@ export const chatAPI = {
   // Stream chat response
   streamChat: async (
     message: string, 
-    sessionId?: string,
     onChunk: (chunk: StreamChunk) => void,
+    sessionId?: string,
     onError?: (error: Error) => void
   ) => {
     try {
