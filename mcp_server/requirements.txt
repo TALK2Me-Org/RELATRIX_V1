@@ -16,7 +16,7 @@ mem0ai>=0.0.13
 httpx==0.24.1
 
 # Data Processing
-pydantic==2.5.0
+pydantic>=2.7.3
 python-dotenv==1.0.0
 
 # MCP Protocol
