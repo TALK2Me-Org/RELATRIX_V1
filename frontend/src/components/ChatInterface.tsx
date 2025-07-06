@@ -66,7 +66,6 @@ export const ChatInterface: React.FC = () => {
     // Stream the response
     await chatAPI.streamChat(
       inputMessage,
-      sessionId,
       (chunk: StreamChunk) => {
         if (chunk.type === 'content' && chunk.content) {
           currentStreamMessage.current += chunk.content;
@@ -88,6 +87,7 @@ export const ChatInterface: React.FC = () => {
           toast.error(chunk.content || 'An error occurred');
         }
       },
+      sessionId,
       (error) => {
         toast.error('Failed to send message');
         console.error('Stream error:', error);
