@@ -254,3 +254,7 @@ CREATE TABLE IF NOT EXISTS agent_transfers (
 CREATE INDEX idx_chat_sessions_user_id ON chat_sessions(user_id);
 CREATE INDEX idx_chat_sessions_created_at ON chat_sessions(created_at);
 CREATE INDEX idx_agent_transfers_session_id ON agent_transfers(session_id);
+
+-- Include Memory Modes schema
+-- Note: This should be run after the main schema is created
+-- \i memory_modes_schema.sql

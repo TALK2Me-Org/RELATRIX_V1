@@ -39,9 +39,11 @@ app.add_middleware(
 # Import and include routers
 from .api import agents_router
 from .api.chat import router as chat_router
+from .api.memory import router as memory_router
 
 app.include_router(agents_router)
 app.include_router(chat_router, prefix="/api", tags=["chat"])
+app.include_router(memory_router, prefix="/api/memory", tags=["memory"])
 
 # Request/Response models
 class HealthResponse(BaseModel):

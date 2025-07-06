@@ -163,6 +163,7 @@ RELATRIX_V1/
 ## Changelog
 
 ### 2025-07-06
+- **22:15** - Zaimplementowano Memory Modes: enum, modele, API endpoints
 - **21:30** - Zaplanowano Memory Modes (4 tryby pracy Redis/Mem0)
 - **20:45** - Zaplanowano Admin Panel bez analizy semantycznej
 - **19:30** - Utworzono PROGRESS_TRACKER.md

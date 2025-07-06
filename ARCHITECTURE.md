@@ -147,6 +147,24 @@ def check_transfer_triggers(message: str, current_agent: Agent):
 - Przy zmianie agenta
 - Przy skoku emocji (keywords)
 - Przy zmianie tematu
+- Przy ważnych informacjach (decyzje)
+
+**Memory Modes Implementation**:
+```python
+# W memory.py
+- set_global_mode() - ustaw tryb globalny
+- set_session_mode() - ustaw tryb dla sesji
+- should_refresh_memory() - sprawdź triggery
+- retrieve_user_context() - pobierz z cache/Mem0
+- Metryki: cache hits, koszty, czas
+
+# API endpoints (/api/memory)
+- POST /mode - ustaw tryb
+- GET /mode - pobierz konfigurację
+- GET /metrics/{session_id} - metryki sesji
+- POST /cache/clear - wyczyść cache
+- GET /modes - lista trybów
+```
 
 ### Database Schema
 

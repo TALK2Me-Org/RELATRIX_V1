@@ -82,6 +82,15 @@ class Orchestrator:
         await self.memory.save_session_state(session)
         self.active_sessions[session_id] = session
         
+        # Initialize memory metrics for the session
+        from .memory_modes import MemoryMetrics
+        config = self.memory.get_session_config(session_id)
+        if session_id not in self.memory.session_metrics:
+            self.memory.session_metrics[session_id] = MemoryMetrics(
+                session_id=session_id,
+                mode=config.mode
+            )
+        
         logger.info(f"Created session {session_id} with agent {initial_agent}")
         return session
     
