@@ -15,7 +15,7 @@ import traceback
 # Add the parent directory to the path so we can import from backend
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from mcp import McpServer, serve_stdio
+from mcp.server.fastmcp import FastMCP
 from mcp.types import (
     Tool, 
     TextContent, 
@@ -363,7 +363,7 @@ class RelatrixMCPServer:
         self.agent_registry = RelativeAgentRegistry()
         self.openai_client = openai.OpenAI(api_key=settings.openai_api_key)
         self.redis_client = get_redis_client()
-        self.server = McpServer("relatrix-mcp-server")
+        self.server = FastMCP("relatrix-mcp-server")
         
         # Initialize tools
         self._register_tools()
@@ -552,23 +552,23 @@ class RelatrixMCPServer:
             logger.error(f"Error generating agent response: {e}")
             return f"❌ Error generating response: {str(e)}"
 
-    async def start_server(self):
+    def start_server(self):
         """Start the MCP server"""
         try:
             logger.info("Starting RELATRIX MCP Server...")
-            await serve_stdio(self.server)
+            self.server.run(transport='stdio')
         except Exception as e:
             logger.error(f"Error starting server: {e}")
             raise
 
-async def main():
+def main():
     """Main function to run the MCP server"""
     try:
         # Initialize server
         server = RelatrixMCPServer()
         
         # Start server
-        await server.start_server()
+        server.start_server()
         
     except KeyboardInterrupt:
         logger.info("Server interrupted by user")
@@ -579,4 +579,4 @@ async def main():
         logger.info("Server shutting down")
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
