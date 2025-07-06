@@ -13,7 +13,7 @@ openai==1.33.0
 mem0ai>=0.0.13
 
 # HTTP Client
-httpx>=0.24.0,<0.25.0
+httpx>=0.27.0
 
 # Data Processing
 pydantic>=2.7.3
@@ -21,4 +21,4 @@ pydantic-settings>=2.1.0
 python-dotenv==1.0.0
 
 # MCP Protocol
-mcp>=0.9.0,<1.0.0
+mcp>=1.0.0

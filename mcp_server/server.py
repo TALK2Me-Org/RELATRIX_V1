@@ -15,8 +15,7 @@ import traceback
 # Add the parent directory to the path so we can import from backend
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from mcp.server import Server
-from mcp.server.stdio import stdio_server
+from mcp import McpServer, serve_stdio
 from mcp.types import (
     Tool, 
     TextContent, 
@@ -364,7 +363,7 @@ class RelatrixMCPServer:
         self.agent_registry = RelativeAgentRegistry()
         self.openai_client = openai.OpenAI(api_key=settings.openai_api_key)
         self.redis_client = get_redis_client()
-        self.server = Server("relatrix-mcp-server")
+        self.server = McpServer("relatrix-mcp-server")
         
         # Initialize tools
         self._register_tools()
@@ -374,202 +373,155 @@ class RelatrixMCPServer:
     def _register_tools(self):
         """Register all available tools"""
         
-        # Define list of available tools
-        @self.server.list_tools()
-        async def handle_list_tools() -> List[Tool]:
-            return [
-                Tool(
-                    name="switch_agent",
-                    description="Switch to a different specialized agent",
-                    inputSchema={
-                        "type": "object",
-                        "properties": {
-                            "agent_id": {
-                                "type": "string",
-                                "description": "The ID of the agent to switch to"
-                            },
-                            "reason": {
-                                "type": "string",
-                                "description": "Optional reason for switching"
-                            }
-                        },
-                        "required": ["agent_id"]
-                    }
-                ),
-                Tool(
-                    name="get_agent_info",
-                    description="Get information about current or specified agent",
-                    inputSchema={
-                        "type": "object",
-                        "properties": {
-                            "agent_id": {
-                                "type": "string",
-                                "description": "Optional agent ID, defaults to current agent"
-                            }
-                        }
-                    }
-                ),
-                Tool(
-                    name="list_agents",
-                    description="List all available agents",
-                    inputSchema={
-                        "type": "object",
-                        "properties": {}
-                    }
-                ),
-                Tool(
-                    name="process_message",
-                    description="Process a message with the current agent",
-                    inputSchema={
-                        "type": "object",
-                        "properties": {
-                            "message": {
-                                "type": "string",
-                                "description": "The message to process"
-                            },
-                            "session_id": {
-                                "type": "string",
-                                "description": "Optional session ID"
-                            }
-                        },
-                        "required": ["message"]
-                    }
-                ),
-                Tool(
-                    name="get_transfer_history",
-                    description="Get history of agent transfers",
-                    inputSchema={
-                        "type": "object",
-                        "properties": {}
-                    }
-                ),
-                Tool(
-                    name="get_session_context",
-                    description="Get current session context",
-                    inputSchema={
-                        "type": "object",
-                        "properties": {}
-                    }
-                )
-            ]
-        
-        # Handle tool calls
-        @self.server.call_tool()
-        async def handle_call_tool(name: str, arguments: dict) -> List[TextContent]:
+        @self.server.tool("switch_agent")
+        def switch_agent(agent_id: str, reason: str = None) -> List[TextContent]:
+            """Switch to a different specialized agent"""
             try:
-                if name == "switch_agent":
-                    agent_id = arguments.get("agent_id")
-                    reason = arguments.get("reason")
-                    if self.agent_registry.switch_agent(agent_id, reason):
-                        agent_info = self.agent_registry.get_agent_info(agent_id)
-                        return [TextContent(
-                            type="text",
-                            text=f"✅ Switched to {agent_info['name']}: {agent_info['description']}"
-                        )]
-                    else:
-                        return [TextContent(
-                            type="text",
-                            text=f"❌ Failed to switch to agent: {agent_id}"
-                        )]
-                
-                elif name == "get_agent_info":
-                    agent_id = arguments.get("agent_id")
+                if self.agent_registry.switch_agent(agent_id, reason):
                     agent_info = self.agent_registry.get_agent_info(agent_id)
-                    if agent_info:
-                        return [TextContent(
-                            type="text",
-                            text=json.dumps(agent_info, indent=2)
-                        )]
-                    else:
-                        return [TextContent(
-                            type="text",
-                            text="❌ Agent not found"
-                        )]
-                
-                elif name == "list_agents":
-                    agents = self.agent_registry.get_all_agents()
-                    current_agent = self.agent_registry.get_current_agent()
-                    
-                    agent_list = []
-                    for agent_id, agent_info in agents.items():
-                        status = "🟢 ACTIVE" if agent_id == current_agent else "⚪ Available"
-                        agent_list.append(f"{status} {agent_id}: {agent_info['name']}")
-                    
                     return [TextContent(
                         type="text",
-                        text="\n".join(agent_list)
+                        text=f"✅ Switched to {agent_info['name']}: {agent_info['description']}"
                     )]
-                
-                elif name == "process_message":
-                    message = arguments.get("message")
-                    user_id = arguments.get("user_id")
-                    # Check for transfer triggers
-                    suggested_agent = self.agent_registry.analyze_transfer_triggers(message)
-                    
-                    if suggested_agent:
-                        # Auto-switch if transfer trigger detected
-                        self.agent_registry.switch_agent(suggested_agent, "Transfer trigger detected")
-                        
-                        # Get new agent info
-                        agent_info = self.agent_registry.get_agent_info(suggested_agent)
-                        
-                        # Notify about the switch
-                        switch_notification = f"🔄 I've connected you with the {agent_info['name']} - {agent_info['description']}\n\n"
-                        
-                        # Process message with new agent
-                        response = self._generate_agent_response(message, suggested_agent)
-                        
-                        return [TextContent(
-                            type="text",
-                            text=switch_notification + response
-                        )]
-                    else:
-                        # Process with current agent
-                        response = self._generate_agent_response(message)
-                        
-                        return [TextContent(
-                            type="text",
-                            text=response
-                        )]
-                
-                elif name == "get_transfer_history":
-                    history = self.agent_registry.transfer_history
-                    if not history:
-                        return [TextContent(
-                            type="text",
-                            text="No transfer history available"
-                        )]
-                    
-                    formatted_history = []
-                    for transfer in history[-10:]:  # Show last 10 transfers
-                        formatted_history.append(
-                            f"• {transfer['timestamp']}: {transfer['from_agent']} → {transfer['to_agent']} ({transfer['reason']})"
-                        )
-                    
-                    return [TextContent(
-                        type="text",
-                        text="\n".join(formatted_history)
-                    )]
-                
-                elif name == "get_session_context":
-                    # Get session context
-                    context = self.agent_registry.session_context
-                    return [TextContent(
-                        type="text",
-                        text=json.dumps(context, indent=2) if context else "No session context available"
-                    )]
-                
                 else:
                     return [TextContent(
                         type="text",
-                        text=f"❌ Unknown tool: {name}"
+                        text=f"❌ Failed to switch to agent: {agent_id}"
+                    )]
+            except Exception as e:
+                logger.error(f"Error switching agent: {e}")
+                return [TextContent(
+                    type="text",
+                    text=f"❌ Error switching agent: {str(e)}"
+                )]
+        
+        @self.server.tool("get_agent_info")
+        def get_agent_info(agent_id: str = None) -> List[TextContent]:
+            """Get information about current or specified agent"""
+            try:
+                agent_info = self.agent_registry.get_agent_info(agent_id)
+                if agent_info:
+                    return [TextContent(
+                        type="text",
+                        text=json.dumps(agent_info, indent=2)
+                    )]
+                else:
+                    return [TextContent(
+                        type="text",
+                        text="❌ Agent not found"
+                    )]
+            except Exception as e:
+                logger.error(f"Error getting agent info: {e}")
+                return [TextContent(
+                    type="text",
+                    text=f"❌ Error getting agent info: {str(e)}"
+                )]
+        
+        @self.server.tool("list_agents")
+        def list_agents() -> List[TextContent]:
+            """List all available agents"""
+            try:
+                agents = self.agent_registry.get_all_agents()
+                current_agent = self.agent_registry.get_current_agent()
+                
+                agent_list = []
+                for agent_id, agent_info in agents.items():
+                    status = "🟢 ACTIVE" if agent_id == current_agent else "⚪ Available"
+                    agent_list.append(f"{status} {agent_id}: {agent_info['name']}")
+                
+                return [TextContent(
+                    type="text",
+                    text="\n".join(agent_list)
+                )]
+            except Exception as e:
+                logger.error(f"Error listing agents: {e}")
+                return [TextContent(
+                    type="text",
+                    text=f"❌ Error listing agents: {str(e)}"
+                )]
+        
+        @self.server.tool("process_message")
+        def process_message(message: str, user_id: str = None) -> List[TextContent]:
+            """Process a message with the current agent"""
+            try:
+                # Check for transfer triggers
+                suggested_agent = self.agent_registry.analyze_transfer_triggers(message)
+                
+                if suggested_agent:
+                    # Auto-switch if transfer trigger detected
+                    self.agent_registry.switch_agent(suggested_agent, "Transfer trigger detected")
+                    
+                    # Get new agent info
+                    agent_info = self.agent_registry.get_agent_info(suggested_agent)
+                    
+                    # Notify about the switch
+                    switch_notification = f"🔄 I've connected you with the {agent_info['name']} - {agent_info['description']}\n\n"
+                    
+                    # Process message with new agent
+                    response = self._generate_agent_response(message, suggested_agent)
+                    
+                    return [TextContent(
+                        type="text",
+                        text=switch_notification + response
+                    )]
+                else:
+                    # Process with current agent
+                    response = self._generate_agent_response(message)
+                    
+                    return [TextContent(
+                        type="text",
+                        text=response
                     )]
                     
             except Exception as e:
-                logger.error(f"Error handling tool {name}: {e}")
+                logger.error(f"Error processing message: {e}")
                 return [TextContent(
                     type="text",
-                    text=f"❌ Error: {str(e)}"
+                    text=f"❌ Error processing message: {str(e)}"
+                )]
+        
+        @self.server.tool("get_transfer_history")
+        def get_transfer_history() -> List[TextContent]:
+            """Get history of agent transfers"""
+            try:
+                history = self.agent_registry.transfer_history
+                if not history:
+                    return [TextContent(
+                        type="text",
+                        text="No transfer history available"
+                    )]
+                
+                formatted_history = []
+                for transfer in history[-10:]:  # Show last 10 transfers
+                    formatted_history.append(
+                        f"• {transfer['timestamp']}: {transfer['from_agent']} → {transfer['to_agent']} ({transfer['reason']})"
+                    )
+                
+                return [TextContent(
+                    type="text",
+                    text="\n".join(formatted_history)
+                )]
+            except Exception as e:
+                logger.error(f"Error getting transfer history: {e}")
+                return [TextContent(
+                    type="text",
+                    text=f"❌ Error getting transfer history: {str(e)}"
+                )]
+        
+        @self.server.tool("get_session_context")
+        def get_session_context() -> List[TextContent]:
+            """Get current session context"""
+            try:
+                context = self.agent_registry.session_context
+                return [TextContent(
+                    type="text",
+                    text=json.dumps(context, indent=2) if context else "No session context available"
+                )]
+            except Exception as e:
+                logger.error(f"Error getting session context: {e}")
+                return [TextContent(
+                    type="text",
+                    text=f"❌ Error getting session context: {str(e)}"
                 )]
     
     def _generate_agent_response(self, message: str, agent_id: str = None) -> str:
@@ -604,8 +556,7 @@ class RelatrixMCPServer:
         """Start the MCP server"""
         try:
             logger.info("Starting RELATRIX MCP Server...")
-            async with stdio_server() as (read_stream, write_stream):
-                await self.server.run(read_stream, write_stream)
+            await serve_stdio(self.server)
         except Exception as e:
             logger.error(f"Error starting server: {e}")
             raise
