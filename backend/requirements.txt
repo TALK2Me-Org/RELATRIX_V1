@@ -13,7 +13,7 @@ openai>=1.33.0
 mem0ai>=0.0.13
 
 # HTTP Client
-# httpx version will be resolved by pip based on dependencies
+httpx>=0.25.0
 
 # Data Processing
 pydantic>=2.7.3

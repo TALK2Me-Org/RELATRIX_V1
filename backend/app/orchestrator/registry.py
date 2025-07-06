@@ -8,13 +8,19 @@ from datetime import datetime, timedelta
 import asyncio
 from uuid import UUID
 
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
-from app.database.connection import get_db
-from app.models.db_agent import AgentDB as AgentModel
-from .models import Agent
-
 logger = logging.getLogger(__name__)
+
+try:
+    from sqlalchemy.ext.asyncio import AsyncSession
+    from sqlalchemy import select, and_
+    from app.database.connection import get_db
+    from app.models.db_agent import AgentDB as AgentModel
+    HAS_DATABASE = True
+except ImportError:
+    HAS_DATABASE = False
+    logger.warning("Database modules not available, using default agents only")
+    
+from .models import Agent
 
 
 class AgentRegistry:
@@ -32,6 +38,11 @@ class AgentRegistry:
         async with self._lock:
             # Check cache validity
             if not force_reload and self._is_cache_valid():
+                return self.agents
+            
+            # If database not available, use defaults
+            if not HAS_DATABASE:
+                self._load_default_agents()
                 return self.agents
             
             try:
@@ -182,7 +193,7 @@ class AgentRegistry:
         
         for i, agent_data in enumerate(defaults):
             agent = Agent(
-                id=UUID('00000000-0000-0000-0000-000000000000'),  # Placeholder
+                id=UUID('00000000-0000-0000-0000-00000000000' + str(i+1)),  # Unique placeholder
                 slug=agent_data["slug"],
                 name=agent_data["name"],
                 description=agent_data["description"],
