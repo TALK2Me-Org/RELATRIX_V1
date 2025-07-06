@@ -35,11 +35,11 @@ COPY --from=builder --chown=nextjs:nodejs /app/build ./build
 USER nextjs
 
 # Expose port
-EXPOSE 3000
+EXPOSE 8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:3000 || exit 1
+    CMD curl -f http://localhost:${PORT:-8080} || exit 1
 
 # Start the production server
-CMD ["serve", "-s", "build", "-l", "3000"]
+CMD ["sh", "-c", "serve -s build -l ${PORT:-8080}"]
