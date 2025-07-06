@@ -556,9 +556,26 @@ class RelatrixMCPServer:
         """Start the MCP server"""
         try:
             logger.info("Starting RELATRIX MCP Server...")
+            
+            # Check if we're in a container environment
+            import os
+            if os.environ.get('RAILWAY_ENVIRONMENT') or os.environ.get('DOCKER_CONTAINER'):
+                logger.info("Running in container environment")
+                # In container, we might need different approach
+                # For now, let's try HTTP server instead
+                logger.warning("Stdio transport may not work in container, consider HTTP transport")
+            
+            # Try to run with stdio transport
             self.server.run(transport='stdio')
+            logger.info("MCP Server stopped")
+            
+        except KeyboardInterrupt:
+            logger.info("Server interrupted by user")
         except Exception as e:
             logger.error(f"Error starting server: {e}")
+            # Log more details about the error
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
             raise
 
 def main():
@@ -568,7 +585,11 @@ def main():
         server = RelatrixMCPServer()
         
         # Start server
+        logger.info("MCP Server starting...")
         server.start_server()
+        
+        # If we get here, server has stopped
+        logger.info("MCP Server has stopped")
         
     except KeyboardInterrupt:
         logger.info("Server interrupted by user")
@@ -579,4 +600,9 @@ def main():
         logger.info("Server shutting down")
 
 if __name__ == "__main__":
+    # For Railway/Docker, ensure output is not buffered
+    import sys
+    sys.stdout.flush()
+    sys.stderr.flush()
+    
     main()

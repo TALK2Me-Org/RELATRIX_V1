@@ -37,5 +37,6 @@ EXPOSE 8001
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8001/health || exit 1
 
-# Run the MCP server
-CMD ["python", "server.py"]
+# Run the MCP server with HTTP wrapper for Railway
+# Stdio doesn't work well in containerized environments
+CMD ["python", "-u", "server_http.py"]
