@@ -16,11 +16,15 @@ from .config import settings
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Initialize FastAPI app
+# Import lifespan before creating app
+from .api.chat import lifespan
+
+# Initialize FastAPI app with lifespan
 app = FastAPI(
     title="RELATRIX Backend",
     description="Backend API for RELATRIX relationship counseling platform",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # Configure CORS

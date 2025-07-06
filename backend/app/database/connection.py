@@ -15,9 +15,15 @@ try:
     from sqlalchemy.orm import declarative_base
     from app.core.config import settings
     
+    # Convert database URL for async driver if needed
+    db_url = settings.database_url
+    if db_url.startswith("postgresql://"):
+        # Replace with asyncpg driver
+        db_url = db_url.replace("postgresql://", "postgresql+asyncpg://")
+    
     # Create async engine
     engine = create_async_engine(
-        settings.database_url,
+        db_url,
         echo=False,
         pool_pre_ping=True,
         pool_size=5,

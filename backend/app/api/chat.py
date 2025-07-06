@@ -4,18 +4,41 @@ Chat API endpoints with Multi-Agent Orchestrator
 
 import logging
 from typing import Optional, Dict, Any
+from contextlib import asynccontextmanager
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import json
 
-from app.orchestrator import orchestrator
+from app.orchestrator.orchestrator import orchestrator
 from app.orchestrator.models import StreamChunk
 from app.core.security import get_current_user
 from app.database.connection import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app):
+    """Lifespan context manager for startup and shutdown"""
+    # Startup
+    try:
+        await orchestrator.initialize()
+        logger.info("Orchestrator initialized on chat API startup")
+    except Exception as e:
+        logger.error(f"Failed to initialize orchestrator: {e}")
+        # Don't fail startup, orchestrator will initialize on first request
+    
+    yield
+    
+    # Shutdown
+    try:
+        await orchestrator.cleanup_sessions()
+        logger.info("Orchestrator cleanup completed")
+    except Exception as e:
+        logger.error(f"Error during orchestrator cleanup: {e}")
+
 
 router = APIRouter()
 
@@ -162,24 +185,4 @@ async def reload_agents(
     return result
 
 
-# Initialize orchestrator on startup
-@router.on_event("startup")
-async def startup_event():
-    """Initialize orchestrator on API startup"""
-    try:
-        await orchestrator.initialize()
-        logger.info("Orchestrator initialized on chat API startup")
-    except Exception as e:
-        logger.error(f"Failed to initialize orchestrator: {e}")
-        # Don't fail startup, orchestrator will initialize on first request
-
-
-# Cleanup on shutdown
-@router.on_event("shutdown") 
-async def shutdown_event():
-    """Cleanup orchestrator resources"""
-    try:
-        await orchestrator.cleanup_sessions()
-        logger.info("Orchestrator cleanup completed")
-    except Exception as e:
-        logger.error(f"Error during orchestrator cleanup: {e}")
+# Note: Startup and shutdown are now handled by lifespan context manager above
