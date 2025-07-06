@@ -15,7 +15,8 @@ import traceback
 # Add the parent directory to the path so we can import from backend
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from mcp import McpServer, serve_stdio
+from mcp.server import Server
+from mcp.server.stdio import stdio_server
 from mcp.types import (
     Tool, 
     TextContent, 
@@ -363,7 +364,7 @@ class RelatrixMCPServer:
         self.agent_registry = RelativeAgentRegistry()
         self.openai_client = openai.OpenAI(api_key=settings.openai_api_key)
         self.redis_client = get_redis_client()
-        self.server = McpServer("relatrix-mcp-server")
+        self.server = Server("relatrix-mcp-server")
         
         # Initialize tools
         self._register_tools()
@@ -540,7 +541,8 @@ class RelatrixMCPServer:
         """Start the MCP server"""
         try:
             logger.info("Starting RELATRIX MCP Server...")
-            await serve_stdio(self.server)
+            async with stdio_server() as (read_stream, write_stream):
+                await self.server.run(read_stream, write_stream)
         except Exception as e:
             logger.error(f"Error starting server: {e}")
             raise
