@@ -219,23 +219,8 @@ class Settings(BaseSettings):
         description="Telemetry endpoint URL"
     )
     
-    # Qdrant Settings (for Mem0)
-    qdrant_host: str = Field(
-        default="localhost",
-        description="Qdrant host"
-    )
-    qdrant_port: int = Field(
-        default=6333,
-        description="Qdrant port"
-    )
-    qdrant_collection: str = Field(
-        default="relatrix_memories",
-        description="Qdrant collection name"
-    )
-    qdrant_api_key: Optional[str] = Field(
-        default=None,
-        description="Qdrant API key (optional)"
-    )
+    # Mem0 Cloud Settings
+    # Note: Mem0 now uses Cloud API, not self-hosted Qdrant
     
     # Railway Settings
     railway_environment: str = Field(
