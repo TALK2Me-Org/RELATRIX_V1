@@ -72,28 +72,6 @@
         "healthcheckTimeout": 100
       },
       "variables": {
-        "REACT_APP_API_URL": "$BACKEND_URL",
-        "REACT_APP_SUPABASE_URL": "$SUPABASE_URL",
-        "REACT_APP_SUPABASE_ANON_KEY": "$SUPABASE_ANON_KEY",
-        "GENERATE_SOURCEMAP": "false"
-      }
-    },
-    "frontend": {
-      "source": "./frontend",
-      "build": {
-        "watchPatterns": [
-          "**/*.ts",
-          "**/*.tsx",
-          "**/*.js",
-          "**/*.jsx"
-        ]
-      },
-      "deploy": {
-        "startCommand": "npm run build && npx serve -s build -l $PORT",
-        "healthcheckPath": "/",
-        "healthcheckTimeout": 100
-      },
-      "variables": {
         "REACT_APP_API_URL": "https://relatrix-backend.up.railway.app",
         "REACT_APP_SUPABASE_URL": "$SUPABASE_URL",
         "REACT_APP_SUPABASE_ANON_KEY": "$SUPABASE_ANON_KEY",
