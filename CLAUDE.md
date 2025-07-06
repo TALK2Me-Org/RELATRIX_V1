@@ -75,6 +75,40 @@ railway run -s backend env
 4. Przy zmianach architektury: aktualizuj ARCHITECTURE.md
 5. Używaj TodoWrite/TodoRead do śledzenia bieżących zadań
 
+## Memory Modes System
+
+### Overview
+RELATRIX używa 4 trybów pracy pamięci, które balansują między kosztami i dokładnością:
+
+1. **Cache First** (domyślny) - Minimalne koszty, 1 retrieval per sesja
+2. **Always Fresh** - Maksymalna dokładność, retrieval per wiadomość  
+3. **Smart Triggers** - Balans, retrieval przy triggerach
+4. **Test Mode** - Testowanie z pełnym logowaniem
+
+### API Endpoints
+```bash
+# Set memory mode
+POST /api/memory/mode
+{
+  "mode": "smart_triggers",
+  "use_preset": "balanced"  # lub custom_config
+}
+
+# Get current mode
+GET /api/memory/mode?session_id=xxx
+
+# Get metrics
+GET /api/memory/metrics/{session_id}
+
+# Clear cache
+POST /api/memory/cache/clear
+```
+
+### Monitoring
+- Sprawdzaj metryki: cache hit rate, koszt per sesja, triggery
+- W Test Mode wszystko jest logowane dla analizy
+- Smart Triggers konfigurowalne per sesja
+
 ## Common Commands
 
 ### Git Commands

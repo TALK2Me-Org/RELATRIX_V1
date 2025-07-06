@@ -7,10 +7,15 @@ import json
 from typing import Dict, Any, List, Optional
 from datetime import datetime, timedelta
 import asyncio
+import time
 
 from redis import asyncio as aioredis
 from app.core.config import settings
 from .models import SessionState, Message
+from .memory_modes import (
+    MemoryMode, MemoryConfig, MemoryMetrics, 
+    TriggerType, DEFAULT_CONFIGS
+)
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +29,7 @@ except ImportError:
 
 
 class MemoryCoordinator:
-    """Coordinates memory between Mem0 and Redis"""
+    """Coordinates memory between Mem0 and Redis with configurable modes"""
     
     def __init__(self):
         # Mem0 client will be initialized lazily
@@ -32,7 +37,13 @@ class MemoryCoordinator:
         self.redis_client = None
         self._initialized = False
         self._mem0_initialized = False
-        logger.info("Memory Coordinator initialized")
+        
+        # Memory mode configuration
+        self.global_config = DEFAULT_CONFIGS["balanced"]
+        self.session_configs: Dict[str, MemoryConfig] = {}
+        self.session_metrics: Dict[str, MemoryMetrics] = {}
+        
+        logger.info("Memory Coordinator initialized with balanced mode")
     
     async def initialize(self):
         """Initialize Redis connection"""
@@ -78,7 +89,7 @@ class MemoryCoordinator:
             await self.initialize()
         
         key = f"session:{session_state.session_id}"
-        value = session_state.json()
+        value = session_state.model_dump_json()
         
         # Set with 24 hour expiration
         await self.redis_client.setex(key, 86400, value)
@@ -93,7 +104,7 @@ class MemoryCoordinator:
         value = await self.redis_client.get(key)
         
         if value:
-            return SessionState.parse_raw(value)
+            return SessionState.model_validate_json(value)
         
         return None
     
@@ -176,41 +187,64 @@ class MemoryCoordinator:
         # Get recent messages
         recent_messages = session_state.conversation_history[-max_messages:]
         
-        # If user_id available, search for relevant memories
-        if session_state.user_id:
-            # Get last user message for context
-            last_user_msg = None
+        # Check if we should refresh memory based on mode and triggers
+        last_user_msg = None
+        if recent_messages:
             for msg in reversed(recent_messages):
                 if msg.role == "user":
                     last_user_msg = msg.content
                     break
+        
+        should_refresh = await self.should_refresh_memory(session_state, last_user_msg)
+        
+        # If user_id available and refresh needed, get context
+        if session_state.user_id and should_refresh:
+            context = await self.retrieve_user_context(session_state)
             
-            if last_user_msg:
-                # Search relevant memories
-                memories = await self.search_memories(
-                    session_state.user_id,
-                    last_user_msg,
-                    limit=3
+            # Add context as system message if found
+            if context.get("memories") or context.get("profile"):
+                memory_msg = Message(
+                    role="system",
+                    content=f"User context: {json.dumps(context)}",
+                    metadata={"type": "memory_context"}
                 )
-                
-                # Add memories as system messages if found
-                if memories:
-                    memory_msg = Message(
-                        role="system",
-                        content=f"Relevant user history: {json.dumps(memories)}",
-                        metadata={"type": "memory_context"}
-                    )
-                    recent_messages.insert(0, memory_msg)
+                recent_messages.insert(0, memory_msg)
         
         return recent_messages
     
     async def save_conversation_memory(
         self,
         session_state: SessionState,
-        summary: Optional[str] = None
+        summary: Optional[str] = None,
+        force: bool = False
     ):
-        """Save conversation summary to long-term memory"""
+        """Save conversation summary to long-term memory based on mode"""
         if not session_state.user_id:
+            return
+        
+        config = self.get_session_config(session_state.session_id)
+        metrics = self.get_session_metrics(session_state.session_id)
+        
+        # Check if we should save based on mode
+        should_save = force
+        
+        if config.mode == MemoryMode.ALWAYS_FRESH:
+            # Always save in this mode
+            should_save = True
+        elif config.mode == MemoryMode.CACHE_FIRST:
+            # Only save at session end
+            should_save = force or config.save_on_session_end
+        elif config.mode in [MemoryMode.SMART_TRIGGERS, MemoryMode.TEST_MODE]:
+            # Save based on configuration
+            should_save = force or config.save_on_session_end
+            
+            # Check for important info trigger
+            if config.save_on_important_info and metrics:
+                if "important_info" in metrics.triggers_fired:
+                    should_save = True
+        
+        if not should_save:
+            logger.debug(f"Skipping memory save for session {session_state.session_id}")
             return
         
         # Create conversation summary if not provided
@@ -231,7 +265,9 @@ class MemoryCoordinator:
             metadata={
                 "session_id": session_state.session_id,
                 "agents_involved": list(set(t.to_agent for t in session_state.transfer_history)),
-                "message_count": len(session_state.conversation_history)
+                "message_count": len(session_state.conversation_history),
+                "memory_mode": config.mode.value,
+                "triggers_fired": metrics.triggers_fired if metrics else {}
             }
         )
         
@@ -239,6 +275,9 @@ class MemoryCoordinator:
         if memory_id:
             session_state.memory_refs.append(memory_id)
             await self.save_session_state(session_state)
+            
+        if config.log_all_operations:
+            logger.info(f"[TEST MODE] Saved memory: {memory_id}")
     
     async def get_user_profile(self, user_id: str) -> Dict[str, Any]:
         """Get user profile from memories"""
@@ -283,3 +322,218 @@ class MemoryCoordinator:
                 break
         
         logger.info("Cleaned up old sessions")
+    
+    # Memory Mode Management Methods
+    
+    def set_global_mode(self, config: MemoryConfig):
+        """Set global memory configuration"""
+        self.global_config = config
+        logger.info(f"Global memory mode set to: {config.mode}")
+    
+    def set_session_mode(self, session_id: str, config: MemoryConfig):
+        """Set memory configuration for specific session"""
+        self.session_configs[session_id] = config
+        
+        # Initialize metrics for this session
+        if session_id not in self.session_metrics:
+            self.session_metrics[session_id] = MemoryMetrics(
+                session_id=session_id,
+                mode=config.mode
+            )
+        
+        logger.info(f"Session {session_id} memory mode set to: {config.mode}")
+    
+    def get_session_config(self, session_id: str) -> MemoryConfig:
+        """Get memory configuration for session (fallback to global)"""
+        return self.session_configs.get(session_id, self.global_config)
+    
+    def get_session_metrics(self, session_id: str) -> Optional[MemoryMetrics]:
+        """Get metrics for a session"""
+        return self.session_metrics.get(session_id)
+    
+    async def should_refresh_memory(
+        self, 
+        session_state: SessionState,
+        message: Optional[str] = None
+    ) -> bool:
+        """Check if memory should be refreshed based on triggers"""
+        config = self.get_session_config(session_state.session_id)
+        
+        # Always refresh mode
+        if config.mode == MemoryMode.ALWAYS_FRESH:
+            return True
+        
+        # Cache first mode - only on session start
+        if config.mode == MemoryMode.CACHE_FIRST:
+            # Check if we have cached context
+            cache_key = f"context:{session_state.session_id}"
+            cached = await self.redis_client.get(cache_key)
+            return cached is None
+        
+        # Smart triggers mode
+        if config.mode == MemoryMode.SMART_TRIGGERS:
+            return await self._check_smart_triggers(session_state, message, config)
+        
+        # Test mode - follow smart triggers but log everything
+        if config.mode == MemoryMode.TEST_MODE:
+            should_refresh = await self._check_smart_triggers(session_state, message, config)
+            if config.log_all_operations:
+                logger.info(f"[TEST MODE] Should refresh: {should_refresh}")
+            return should_refresh
+        
+        return False
+    
+    async def _check_smart_triggers(
+        self,
+        session_state: SessionState,
+        message: Optional[str],
+        config: MemoryConfig
+    ) -> bool:
+        """Check if any smart trigger is activated"""
+        triggers = config.triggers
+        metrics = self.get_session_metrics(session_state.session_id)
+        
+        # Message count trigger
+        if triggers.message_count.enabled and triggers.message_count.threshold:
+            msg_count = len(session_state.conversation_history)
+            if msg_count % triggers.message_count.threshold == 0:
+                if metrics:
+                    metrics.add_trigger("message_count")
+                logger.debug(f"Message count trigger fired: {msg_count}")
+                return True
+        
+        # Time elapsed trigger
+        if triggers.time_elapsed.enabled and triggers.time_elapsed.minutes:
+            if metrics and metrics.started_at:
+                elapsed = (datetime.now() - metrics.started_at).total_seconds() / 60
+                if elapsed >= triggers.time_elapsed.minutes:
+                    metrics.add_trigger("time_elapsed")
+                    logger.debug(f"Time elapsed trigger fired: {elapsed:.1f} minutes")
+                    return True
+        
+        # Agent transfer trigger
+        if triggers.agent_transfer.enabled:
+            # Check if agent changed in last transfer
+            if session_state.transfer_history:
+                last_transfer = session_state.transfer_history[-1]
+                # Check if this is a recent transfer (within last 2 messages)
+                recent_messages = session_state.conversation_history[-2:]
+                if any(msg.metadata.get("transfer_event") for msg in recent_messages):
+                    if metrics:
+                        metrics.add_trigger("agent_transfer")
+                    logger.debug("Agent transfer trigger fired")
+                    return True
+        
+        # Keyword-based triggers (emotion, topic, important info)
+        if message:
+            message_lower = message.lower()
+            
+            # Emotion spike trigger
+            if triggers.emotion_spike.enabled and triggers.emotion_spike.keywords:
+                if any(keyword in message_lower for keyword in triggers.emotion_spike.keywords):
+                    if metrics:
+                        metrics.add_trigger("emotion_spike")
+                    logger.debug("Emotion spike trigger fired")
+                    return True
+            
+            # Topic change trigger
+            if triggers.topic_change.enabled and triggers.topic_change.keywords:
+                if any(keyword in message_lower for keyword in triggers.topic_change.keywords):
+                    if metrics:
+                        metrics.add_trigger("topic_change")
+                    logger.debug("Topic change trigger fired")
+                    return True
+            
+            # Important info trigger (for immediate save)
+            if triggers.important_info.enabled and triggers.important_info.keywords:
+                if any(keyword in message_lower for keyword in triggers.important_info.keywords):
+                    if metrics:
+                        metrics.add_trigger("important_info")
+                    logger.debug("Important info trigger fired")
+                    # Note: This trigger might also trigger immediate save
+                    return True
+        
+        return False
+    
+    async def retrieve_user_context(
+        self,
+        session_state: SessionState,
+        force_refresh: bool = False
+    ) -> Dict[str, Any]:
+        """Retrieve user context based on memory mode"""
+        config = self.get_session_config(session_state.session_id)
+        metrics = self.get_session_metrics(session_state.session_id)
+        cache_key = f"context:{session_state.session_id}"
+        
+        # Check cache first (unless forced or in always fresh mode)
+        if not force_refresh and config.mode != MemoryMode.ALWAYS_FRESH:
+            cached = await self.redis_client.get(cache_key)
+            if cached:
+                if metrics:
+                    metrics.add_cache_hit()
+                logger.debug(f"Cache hit for session {session_state.session_id}")
+                return json.loads(cached)
+        
+        # Cache miss - retrieve from Mem0
+        if metrics:
+            metrics.add_cache_miss()
+        
+        start_time = time.time()
+        context = await self._retrieve_from_mem0(session_state, config)
+        retrieval_time = (time.time() - start_time) * 1000  # Convert to ms
+        
+        # Update metrics
+        if metrics:
+            token_count = len(json.dumps(context)) // 4  # Rough estimate
+            metrics.add_retrieval(token_count, retrieval_time)
+        
+        # Cache the context
+        await self.redis_client.setex(
+            cache_key,
+            config.cache_ttl,
+            json.dumps(context)
+        )
+        
+        logger.debug(f"Retrieved and cached context for session {session_state.session_id}")
+        return context
+    
+    async def _retrieve_from_mem0(
+        self,
+        session_state: SessionState,
+        config: MemoryConfig
+    ) -> Dict[str, Any]:
+        """Retrieve memories from Mem0 with config limits"""
+        if not session_state.user_id or not self.mem0_client:
+            return {"memories": [], "profile": {}}
+        
+        # Get last user message for context
+        last_user_msg = None
+        for msg in reversed(session_state.conversation_history[-10:]):
+            if msg.role == "user":
+                last_user_msg = msg.content
+                break
+        
+        if not last_user_msg:
+            last_user_msg = "user conversation history"
+        
+        # Search memories with limit
+        memories = await self.search_memories(
+            session_state.user_id,
+            last_user_msg,
+            limit=config.max_memories_per_retrieval
+        )
+        
+        # Truncate if exceeds token limit
+        context = {
+            "memories": memories,
+            "profile": await self.get_user_profile(session_state.user_id)
+        }
+        
+        # Simple token estimation and truncation
+        context_str = json.dumps(context)
+        if len(context_str) > config.max_context_tokens * 4:  # Rough char to token ratio
+            # Truncate memories
+            while len(json.dumps(context)) > config.max_context_tokens * 4 and context["memories"]:
+                context["memories"].pop()
+        
+        return context
