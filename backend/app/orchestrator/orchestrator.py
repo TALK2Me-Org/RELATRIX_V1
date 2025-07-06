@@ -328,5 +328,15 @@ class Orchestrator:
         await self.memory.cleanup_old_sessions()
 
 
-# Global orchestrator instance
-orchestrator = Orchestrator()
+# Global orchestrator instance (lazy initialization)
+_orchestrator = None
+
+def get_orchestrator() -> Orchestrator:
+    """Get or create orchestrator instance"""
+    global _orchestrator
+    if _orchestrator is None:
+        _orchestrator = Orchestrator()
+    return _orchestrator
+
+# For backward compatibility
+orchestrator = get_orchestrator()

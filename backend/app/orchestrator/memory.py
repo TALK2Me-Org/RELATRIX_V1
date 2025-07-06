@@ -8,41 +8,30 @@ from typing import Dict, Any, List, Optional
 from datetime import datetime, timedelta
 import asyncio
 
-from mem0 import Memory
 from redis import asyncio as aioredis
 from app.core.config import settings
 from .models import SessionState, Message
 
 logger = logging.getLogger(__name__)
 
+# Lazy import Mem0 to avoid initialization issues
+try:
+    from mem0 import MemoryClient
+    HAS_MEM0 = True
+except ImportError:
+    logger.warning("Mem0 not available, memory features will be limited")
+    HAS_MEM0 = False
+
 
 class MemoryCoordinator:
     """Coordinates memory between Mem0 and Redis"""
     
     def __init__(self):
-        # Initialize Mem0
-        self.mem0_config = {
-            "vector_store": {
-                "provider": "qdrant",
-                "config": {
-                    "host": settings.qdrant_host,
-                    "port": settings.qdrant_port,
-                    "collection_name": settings.qdrant_collection,
-                    "api_key": settings.qdrant_api_key if hasattr(settings, 'qdrant_api_key') else None
-                }
-            },
-            "llm": {
-                "provider": "openai",
-                "config": {
-                    "api_key": settings.openai_api_key,
-                    "model": "gpt-4-turbo-preview"
-                }
-            }
-        }
-        
-        self.memory = Memory.from_config(self.mem0_config)
+        # Mem0 client will be initialized lazily
+        self.mem0_client = None
         self.redis_client = None
         self._initialized = False
+        self._mem0_initialized = False
         logger.info("Memory Coordinator initialized")
     
     async def initialize(self):
@@ -62,6 +51,26 @@ class MemoryCoordinator:
         except Exception as e:
             logger.error(f"Failed to connect to Redis: {e}")
             raise
+    
+    def _init_mem0(self):
+        """Initialize Mem0 client lazily"""
+        if self._mem0_initialized or not HAS_MEM0:
+            return
+        
+        try:
+            # Check if API key is configured
+            if not hasattr(settings, 'mem0_api_key') or settings.mem0_api_key.startswith('m0-placeholder'):
+                logger.warning("Mem0 API key not configured, skipping initialization")
+                return
+            
+            # Initialize Mem0 Cloud API client
+            self.mem0_client = MemoryClient(api_key=settings.mem0_api_key)
+            self._mem0_initialized = True
+            logger.info("Mem0 Cloud API client initialized")
+        except Exception as e:
+            logger.error(f"Failed to initialize Mem0: {e}")
+            # Don't crash if Mem0 fails
+            self.mem0_client = None
     
     async def save_session_state(self, session_state: SessionState):
         """Save session state to Redis"""
@@ -94,18 +103,33 @@ class MemoryCoordinator:
         message: str,
         metadata: Dict[str, Any] = None
     ) -> str:
-        """Add memory to Mem0"""
+        """Add memory to Mem0 Cloud"""
+        # Initialize Mem0 if needed
+        self._init_mem0()
+        
+        if not self.mem0_client:
+            logger.debug("Mem0 not available, skipping memory storage")
+            return ""
+        
         try:
-            result = self.memory.add(
-                message,
+            # Use Mem0 Cloud API
+            messages = [{"role": "user", "content": message}]
+            result = self.mem0_client.add(
+                messages,
                 user_id=user_id,
                 metadata=metadata or {}
             )
             
-            # Extract memory ID
-            memory_id = result.get('id', '') if isinstance(result, dict) else str(result)
-            logger.debug(f"Added memory for user {user_id}: {memory_id}")
-            return memory_id
+            # Extract memory ID from Cloud API response
+            if isinstance(result, dict) and 'memories' in result:
+                # Cloud API returns {"memories": [{"id": "...", ...}]}
+                memories = result.get('memories', [])
+                if memories:
+                    memory_id = memories[0].get('id', '')
+                    logger.debug(f"Added memory for user {user_id}: {memory_id}")
+                    return memory_id
+            
+            return ""
             
         except Exception as e:
             logger.error(f"Error adding memory: {e}")
@@ -118,14 +142,26 @@ class MemoryCoordinator:
         limit: int = 5
     ) -> List[Dict[str, Any]]:
         """Search user memories"""
+        # Initialize Mem0 if needed
+        self._init_mem0()
+        
+        if not self.mem0_client:
+            logger.debug("Mem0 not available, returning empty results")
+            return []
+        
         try:
-            results = self.memory.search(
+            # Use Mem0 Cloud API search
+            results = self.mem0_client.search(
                 query=query,
                 user_id=user_id,
                 limit=limit
             )
             
-            return results
+            # Cloud API returns {"memories": [...]}
+            if isinstance(results, dict) and 'memories' in results:
+                return results.get('memories', [])
+            
+            return results if isinstance(results, list) else []
             
         except Exception as e:
             logger.error(f"Error searching memories: {e}")
