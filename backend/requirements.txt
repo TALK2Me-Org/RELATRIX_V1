@@ -9,7 +9,7 @@ redis==5.0.1
 supabase==2.0.1
 
 # AI and LLM
-openai>=1.33.0,<2.0.0
+openai==1.33.0
 mem0ai>=0.0.13
 
 # HTTP Client
