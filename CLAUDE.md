@@ -60,6 +60,21 @@ railway run -s backend env
 - Backend needs proper DATABASE_URL to connect to PostgreSQL
 - Agents are loaded from database, falls back to defaults if connection fails
 
+## Ważne pliki do śledzenia
+
+### Przy każdej sesji sprawdzaj i aktualizuj:
+1. **PROGRESS_TRACKER.md** - aktualizuj po każdym wykonanym zadaniu
+2. **TASK_LIST.md** - sprawdzaj co do zrobienia  
+3. **RAILWAY_CONFIG.md** - sprawdzaj konfigurację deploymentu
+4. **ARCHITECTURE.md** - aktualizuj przy zmianach architektury
+
+### Workflow:
+1. Na początku sesji: przeczytaj PROGRESS_TRACKER.md
+2. Sprawdź TASK_LIST.md co jest do zrobienia
+3. Po wykonaniu zadania: natychmiast aktualizuj PROGRESS_TRACKER.md
+4. Przy zmianach architektury: aktualizuj ARCHITECTURE.md
+5. Używaj TodoWrite/TodoRead do śledzenia bieżących zadań
+
 ## Common Commands
 
 ### Git Commands
