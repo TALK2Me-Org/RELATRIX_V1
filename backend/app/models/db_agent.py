@@ -25,7 +25,6 @@ try:
         temperature = Column(Float, default=0.7)
         max_tokens = Column(Integer, default=4000)
         transfer_triggers = Column(JSON, default=list)
-        capabilities = Column(JSON, default=list)
         is_active = Column(Boolean, default=True)
         display_order = Column(Integer, default=0)
         created_at = Column(DateTime(timezone=True), server_default=func.now())

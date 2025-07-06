@@ -152,8 +152,7 @@ async def list_available_agents():
             {
                 "slug": agent.slug,
                 "name": agent.name,
-                "description": agent.description,
-                "capabilities": agent.capabilities
+                "description": agent.description
             }
             for agent in agents
         ],
