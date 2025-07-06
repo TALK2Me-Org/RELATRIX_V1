@@ -11,7 +11,6 @@ CREATE TABLE IF NOT EXISTS agents (
   temperature FLOAT DEFAULT 0.7 CHECK (temperature >= 0 AND temperature <= 2),
   max_tokens INT DEFAULT 4000 CHECK (max_tokens > 0 AND max_tokens <= 8000),
   transfer_triggers JSONB DEFAULT '[]'::jsonb,
-  capabilities JSONB DEFAULT '[]'::jsonb,
   is_active BOOLEAN DEFAULT true,
   display_order INT DEFAULT 0,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

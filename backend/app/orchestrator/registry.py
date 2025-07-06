@@ -68,7 +68,6 @@ class AgentRegistry:
                             temperature=db_agent.temperature,
                             max_tokens=db_agent.max_tokens,
                             transfer_triggers=db_agent.transfer_triggers or [],
-                            capabilities=db_agent.capabilities or [],
                             is_active=db_agent.is_active,
                             display_order=db_agent.display_order,
                             created_at=db_agent.created_at,

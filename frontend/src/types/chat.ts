@@ -4,7 +4,6 @@ export interface Agent {
   slug: string;
   name: string;
   description: string;
-  capabilities: string[];
 }
 
 export interface Message {
