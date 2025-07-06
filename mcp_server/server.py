@@ -28,7 +28,7 @@ from mcp.types import (
 )
 import openai
 import redis
-from backend.app.config import settings
+from config import settings
 from redis_config import get_redis_client
 
 # Configure logging
