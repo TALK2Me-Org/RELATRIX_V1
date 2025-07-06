@@ -56,27 +56,6 @@
         "ADMIN_PASSWORD": "$ADMIN_PASSWORD"
       }
     },
-    "mcp_server": {
-      "source": "./mcp_server",
-      "build": {
-        "watchPatterns": [
-          "**/*.py"
-        ]
-      },
-      "deploy": {
-        "startCommand": "python server.py",
-        "healthcheckPath": "/health",
-        "healthcheckTimeout": 100
-      },
-      "variables": {
-        "OPENAI_API_KEY": "$OPENAI_API_KEY",
-        "MEM0_API_KEY": "$MEM0_API_KEY",
-        "MEM0_USER_ID": "$MEM0_USER_ID",
-        "REDIS_URL": "$REDIS_URL",
-        "MCP_SERVER_HOST": "0.0.0.0",
-        "MCP_SERVER_PORT": "$PORT"
-      }
-    },
     "frontend": {
       "source": "./frontend",
       "build": {

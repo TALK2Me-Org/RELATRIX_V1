@@ -34,7 +34,10 @@ app.add_middleware(
 
 # Import and include routers
 from .api import agents_router
+from .api.chat import router as chat_router
+
 app.include_router(agents_router)
+app.include_router(chat_router, prefix="/api", tags=["chat"])
 
 # Request/Response models
 class HealthResponse(BaseModel):
@@ -76,13 +79,12 @@ async def root():
         }
     }
 
-# Chat endpoint (placeholder for MCP integration)
+# Legacy chat endpoint - redirects to new orchestrator endpoint
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
-    """Chat endpoint - will integrate with MCP server"""
-    # Placeholder response
+    """Legacy chat endpoint - use /api/chat/stream instead"""
     return ChatResponse(
-        response="Hello! RELATRIX backend is running. MCP integration coming soon.",
+        response="Please use /api/chat/stream for streaming chat with Multi-Agent Orchestrator",
         agent="system",
         session_id=request.session_id or "default"
     )
