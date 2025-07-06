@@ -1,11 +1,13 @@
 """Admin endpoint to run database migrations"""
 
 from fastapi import APIRouter, HTTPException, Depends
-from sqlalchemy import text
+from sqlalchemy import text, create_engine
 from typing import Dict, List
 
-from app.database import engine
+from app.database import get_db
+from app.database.connection import engine, HAS_DATABASE
 from app.core.security import get_current_user
+from app.core.config import settings
 import logging
 
 logger = logging.getLogger(__name__)
@@ -21,9 +23,14 @@ async def run_memory_modes_migration(
     # Check if user is admin (you can add proper admin check here)
     # For now, any authenticated user can run this
     
+    if not HAS_DATABASE:
+        raise HTTPException(503, "Database not configured")
+    
     try:
         # Read migration SQL
-        with open("database/memory_modes_schema.sql", "r") as f:
+        import os
+        migration_path = os.path.join(os.path.dirname(__file__), "..", "..", "database", "memory_modes_schema.sql")
+        with open(migration_path, "r") as f:
             migration_sql = f.read()
         
         results = {
@@ -32,8 +39,11 @@ async def run_memory_modes_migration(
             "warnings": []
         }
         
+        # Create sync engine for migration
+        sync_engine = create_engine(settings.database_url)
+        
         # Execute migration
-        with engine.connect() as conn:
+        with sync_engine.connect() as conn:
             # Split by statements and execute each
             statements = [s.strip() for s in migration_sql.split(';') if s.strip()]
             
@@ -100,8 +110,14 @@ async def check_memory_tables(
 ):
     """Check if Memory Modes tables exist"""
     
+    if not HAS_DATABASE:
+        raise HTTPException(503, "Database not configured")
+    
     try:
-        with engine.connect() as conn:
+        # Create sync engine for check
+        sync_engine = create_engine(settings.database_url)
+        
+        with sync_engine.connect() as conn:
             # Check tables
             result = conn.execute(text("""
                 SELECT table_name 
