@@ -32,6 +32,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Import and include routers
+from .api import agents_router
+app.include_router(agents_router)
+
 # Request/Response models
 class HealthResponse(BaseModel):
     status: str
