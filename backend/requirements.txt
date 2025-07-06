@@ -20,5 +20,6 @@ pydantic>=2.7.3
 pydantic-settings>=2.1.0
 python-dotenv==1.0.0
 
-# MCP Protocol
-mcp>=1.0.0
+# Database
+sqlalchemy>=2.0.0
+asyncpg>=0.29.0
