@@ -1,6 +1,6 @@
 # RELATRIX Progress Tracker
 
-## Ostatnia aktualizacja: 2025-07-06 19:30 CET
+## Ostatnia aktualizacja: 2025-07-06 20:45 CET
 
 ## Status projektu: 40% Complete
 
@@ -141,8 +141,12 @@ RELATRIX_V1/
   - React + TypeScript + Tailwind
   - Pliki: ChatInterface.tsx, api.ts
   
-- [ ] Task 5.4-5.7: Admin Panel
-  - ❌ Kompletnie brak
+- [ ] Task 5.4-5.7: Admin Panel [Planned]
+  - ⏳ Dashboard z metrykami KPI
+  - ⏳ Kartoteki użytkowników  
+  - ⏳ Sandbox testowania AI (7 modeli)
+  - ⏳ Monitoring systemów
+  - ⏳ Konfiguracja Redis/Mem0
 
 ### ❌ FAZA 6: Testing & Deployment [20%]
 - [ ] Task 6.1: Testing - ❌ Brak
@@ -159,6 +163,7 @@ RELATRIX_V1/
 ## Changelog
 
 ### 2025-07-06
+- **20:45** - Zaplanowano Admin Panel bez analizy semantycznej
 - **19:30** - Utworzono PROGRESS_TRACKER.md
 - **17:10** - [5f04770] Usunięto niepotrzebną kolumnę capabilities
 - **17:02** - [963f948] Próba dodania capabilities (błędna)
@@ -213,22 +218,31 @@ RELATRIX_V1/
 
 ## Next Steps (Priorytety)
 
-1. **Implementacja transfer triggers** [CRITICAL]
+1. **Dopracowanie Redis/Mem0** [CRITICAL]
+   - Implementacja retrieval strategies
+   - Konfigurowalny cache TTL
+   - Panel konfiguracji w adminie
+
+2. **Admin Panel - Backend** [CRITICAL]
+   - Dashboard API endpoints
+   - User kartoteki endpoints
+   - Sandbox API
+   - Monitoring endpoints
+
+3. **Admin Panel - Frontend** [IMPORTANT]
+   - Dashboard z metrykami
+   - Kartoteki użytkowników
+   - Sandbox 7 modeli
+   - Monitoring UI
+
+4. **Implementacja transfer triggers** [IMPORTANT]
    - Dokończyć transfer.py
    - Regex matching dla trigger phrases
    - Testy przełączania agentów
 
-2. **Rejestracja Mem0** [IMPORTANT]
+5. **Rejestracja Mem0** [IMPORTANT]
    - Wymaga manualnej rejestracji
    - Włączy długoterminową pamięć
-
-3. **Basic Admin Panel** [IMPORTANT]
-   - CRUD dla agentów
-   - Podstawowe metryki
-   - Podgląd sesji
-
-4. **Fix deprecation warnings** [MINOR]
-   - Zmienić .json() na .model_dump_json()
 
 ## Deployment Info
 
