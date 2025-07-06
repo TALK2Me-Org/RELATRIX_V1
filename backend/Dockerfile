@@ -26,10 +26,17 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy project files
 COPY . .
 
-# Create non-root user
-RUN groupadd -r appuser && useradd -r -g appuser appuser
+# Create non-root user with home directory
+RUN groupadd -r appuser && useradd -r -g appuser -m appuser
 RUN chown -R appuser:appuser /app
+
+# Create necessary directories for mem0
 USER appuser
+RUN mkdir -p /home/appuser/.mem0
+
+# Set HOME environment variable
+ENV HOME=/home/appuser
+ENV MEM0_DIR=/home/appuser/.mem0
 
 # Expose port
 EXPOSE 8000
