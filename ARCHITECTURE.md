@@ -249,8 +249,8 @@ REACT_APP_API_URL    # Backend URL
    - Brak metryk użycia
 
 4. **Memory limitations**
-   - Mem0 niezarejestrowane
-   - Tylko Redis cache działa
+   - Mem0 używa przestarzałego v1 API - konieczna migracja do v2
+   - v1 aktualizuje oryginalne wspomnienia zamiast je zachowywać
 
 ## Known Issues & Workarounds
 
@@ -277,12 +277,17 @@ REACT_APP_API_URL    # Backend URL
 
 ## Future Improvements
 
-1. **Implementacja transfer logic**
+1. **🔴 PILNE: Migracja Mem0 do v2 API**
+   - Dodać version="v2" do wszystkich wywołań
+   - v2 automatycznie zarządza kontekstem
+   - Rozwiąże problem aktualizowania wspomnień
+
+2. **Implementacja transfer logic**
    - Regex matching dla triggers
    - Inteligentne przełączanie kontekstu
 
-2. **Pełna integracja Mem0**
-   - Długoterminowa pamięć
+3. **Pełna integracja Mem0 v2**
+   - Długoterminowa pamięć z właściwym kontekstem
    - Cross-session insights
 
 3. **Admin panel**

@@ -99,12 +99,13 @@ Zaimplementuj mcp_server/transfer_protocols.py:
 **Polecenie dla Claude Code:**
 ```
 Stwórz mcp_server/memory_manager.py:
-- Mem0 API client integration
+- Mem0 API client integration z version="v2" (WAŻNE!)
 - Redis caching layer
 - Context optimization dla token savings
 - Memory categorization (relationship patterns, communication styles)
 - Cost optimization strategies
 ```
+**⚠️ UWAGA:** Używamy Mem0 v2 API - zawsze dodawaj version="v2" do wywołań!
 **Oczekiwany rezultat:** Inteligentne zarządzanie pamięcią i kontekstem
 
 ### Task 2.4: MCP Tools Implementation
@@ -465,9 +466,15 @@ Stwórz podstawową strukturę projektu RELATRIX zgodnie z planem:
 ```
 
 **Status Tracking:**
-- [ ] Faza 1: Setup & Infrastructure
-- [ ] Faza 2: Core MCP Server  
-- [ ] Faza 3: Specialized Agents
-- [ ] Faza 4: Backend API & Database
-- [ ] Faza 5: Frontend & Admin Panel
-- [ ] Faza 6: Testing & Deployment
+- [x] Faza 1: Setup & Infrastructure (100%)
+- [x] Faza 2: Core MCP Server → Multi-Agent Orchestrator (100%)
+- [🔧] Faza 3: Specialized Agents (15% - tylko w bazie danych)
+- [🔧] Faza 4: Backend API & Database (85% - brak telemetrii)
+- [🔧] Faza 5: Frontend & Admin Panel (45% - brak admin panelu)
+- [🔧] Faza 6: Testing & Deployment (20% - działa na Railway)
+
+**🚨 CRITICAL UPDATE (2025-07-07):**
+Odkryliśmy że używamy przestarzałego Mem0 v1 API! Konieczna migracja do v2:
+- Dokumentacja: MEM0_GUIDE.md i MEM0_INSTRUKCJE_PL.md
+- Wymagana zmiana: Dodać version="v2" do wszystkich wywołań Mem0
+- Problem: v1 aktualizuje/nadpisuje oryginalne wspomnienia użytkownika

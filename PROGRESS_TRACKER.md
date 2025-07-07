@@ -1,18 +1,18 @@
 # RELATRIX Progress Tracker
 
-## Ostatnia aktualizacja: 2025-07-07 17:30 CET
+## Ostatnia aktualizacja: 2025-07-07 20:30 CET
 
-## Status projektu: 48% Complete
+## Status projektu: 52% Complete
 
 ## Quick Stats
 - ✅ Fazy ukończone: 3/6 (+ częściowo FAZA 4)
-- 🚧 W trakcie: Naprawa Memory Modes i integracji Mem0
+- 🚧 W trakcie: Admin panel, transfer triggers
 - ❌ Do zrobienia: Admin panel, testy, telemetria, transfer triggers
 - 🚀 Deployment: Railway (działający)
-- 🔐 Nowe: System autoryzacji użytkowników (Supabase) - DZIAŁA!
-- ✅ Autoryzacja: W pełni działająca (Supabase Auth)
-- ✅ Chat: Działa z opcjonalną autoryzacją
-- 🔧 Mem0: W trakcie naprawy - zmiana z podsumowań na rzeczywiste wiadomości
+- ✅ System autoryzacji: W pełni działający (Supabase Auth)
+- ✅ Chat: Działa z autoryzacją i pamięcią
+- ✅ Mem0 v2: Naprawione - zapisuje właściwe wspomnienia bez UPDATE
+- ✅ Memory Modes: W pełni zaimplementowane
 - ❌ Do zrobienia: Admin panel, transfer triggers, UI dla Memory Modes
 
 ## Architektura systemu
@@ -171,6 +171,19 @@ RELATRIX_V1/
 ## Changelog
 
 ### 2025-07-07
+- **20:30** - ✅ ZAKOŃCZONO MIGRACJĘ MEM0 DO v2!
+  - Zaimplementowano version="v2" dla add() - zapobiega UPDATE problemom
+  - Naprawiono błąd "filters required" - search() NIE używa v2 (tylko dla Criteria Retrieval)
+  - Dodano output_format="v1.1" - usunięto deprecation warning
+  - Przetestowano z nowym użytkownikiem - wszystko działa poprawnie
+  - Mem0 teraz tworzy NOWE wspomnienia zamiast aktualizować istniejące
+  - Dokumentacja kompletna: MEM0_GUIDE.md i MEM0_INSTRUKCJE_PL.md
+- **18:00** - 🚨 KRYTYCZNE ODKRYCIE: Używamy Mem0 v1 (przestarzałe) zamiast v2!
+  - Problem: Mem0 AKTUALIZUJE oryginalne wspomnienia użytkownika zamiast je zachowywać
+  - Przyczyna: v1 wymaga pełnej historii konwersacji, v2 automatycznie zarządza kontekstem
+  - Rozwiązanie: Migracja do v2 poprzez dodanie version="v2" we wszystkich wywołaniach API
+  - Utworzono dokumentację: MEM0_GUIDE.md i MEM0_INSTRUKCJE_PL.md
+  - Plan migracji gotowy, czeka na implementację
 - **17:30** - 🔴 KRYTYCZNA NAPRAWA: Memory context był POMIJANY!
   - Naprawiono format_messages_for_api() w streaming.py
   - Usunięto kod który pomijał memory_context przy wysyłaniu do OpenAI
@@ -286,12 +299,10 @@ RELATRIX_V1/
    - Logika w transfer.py nie jest zaimplementowana
    - Agenci się nie przełączają automatycznie
 
-2. **🟡 FIXING: Mem0 zapisywało podsumowania zamiast wiadomości**
-   - ✅ Naprawiono: save_conversation_memory() teraz wysyła rzeczywiste wiadomości
-   - ✅ Dodano: format_messages_for_mem0() helper
-   - ✅ Zaktualizowano: add_memory() przyjmuje teraz listę messages
-   - ✅ Poprawiono: get_context_window() pobiera memories z Mem0
-   - 🔧 Do przetestowania: czy user się utworzy w Mem0 przy nowym formacie
+2. **✅ NAPRAWIONE: Mem0 v2 migration**
+   - Problem z UPDATE został rozwiązany
+   - add() używa v2, search() nie (zgodnie z dokumentacją)
+   - Mem0 teraz tworzy nowe wspomnienia zamiast nadpisywać
 
 3. **🟡 IMPORTANT: Brak admin panelu**
    - Nie można edytować agentów bez SQL
@@ -307,33 +318,32 @@ RELATRIX_V1/
 
 ## Next Steps (Priorytety)
 
-1. **Przetestować naprawione Memory Modes** [CRITICAL - NEXT]
-   - Sprawdzić czy Mem0 zapisuje rzeczywiste wiadomości
-   - Zweryfikować czy user się tworzy w Mem0
-   - Przetestować retrieval z Mem0 w różnych trybach
-   - Upewnić się że każdy tryb działa zgodnie z założeniami
-
-2. **UI dla Memory Modes** [HIGH]
-   - Przełącznik trybów w admin panelu
-   - Wyświetlanie metryk
-   - Konfiguracja triggerów
-
-3. **Admin Panel - Backend** [HIGH]
+1. **Admin Panel - Backend** [HIGH - NEXT]
    - Dashboard API endpoints
-   - User kartoteki endpoints (wymaga auth!)
-   - Sandbox API
+   - User kartoteki endpoints
+   - Memory modes configuration API
    - Monitoring endpoints
 
-4. **Admin Panel - Frontend** [MEDIUM]
-   - Dashboard z metrykami
+2. **Admin Panel - Frontend** [HIGH]
+   - Dashboard z metrykami KPI
    - Kartoteki użytkowników
-   - Sandbox 7 modeli
-   - Monitoring UI
+   - UI dla Memory Modes (przełącznik trybów)
+   - Sandbox 7 modeli AI
 
-5. **Implementacja transfer triggers** [MEDIUM]
+3. **Implementacja transfer triggers** [MEDIUM]
    - Dokończyć transfer.py
    - Regex matching dla trigger phrases
    - Testy przełączania agentów
+
+4. **Telemetria i monitoring** [MEDIUM]
+   - Tracking kosztów OpenAI/Mem0
+   - Metryki użycia per user
+   - Alerty przy przekroczeniu limitów
+
+5. **Testy E2E** [LOW]
+   - Automated tests dla głównych flow
+   - Performance testing
+   - Load testing
 
 ## Deployment Info
 
