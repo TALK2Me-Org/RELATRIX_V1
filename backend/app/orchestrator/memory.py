@@ -127,15 +127,11 @@ class MemoryCoordinator:
         try:
             # Use Mem0 Cloud API
             messages = [{"role": "user", "content": message}]
-            logger.info(f"Attempting to add memory for user {user_id}: {message[:50]}...")
-            
             result = self.mem0_client.add(
                 messages,
                 user_id=user_id,
                 metadata=metadata or {}
             )
-            
-            logger.info(f"Mem0 add() returned: {type(result)} - {result}")
             
             # Extract memory ID from Cloud API response
             if isinstance(result, dict) and 'memories' in result:
@@ -143,17 +139,13 @@ class MemoryCoordinator:
                 memories = result.get('memories', [])
                 if memories:
                     memory_id = memories[0].get('id', '')
-                    logger.info(f"Successfully added memory for user {user_id}: {memory_id}")
+                    logger.debug(f"Added memory for user {user_id}: {memory_id}")
                     return memory_id
-                else:
-                    logger.warning(f"No memories in result: {result}")
-            else:
-                logger.warning(f"Unexpected result format: {result}")
             
             return ""
             
         except Exception as e:
-            logger.error(f"Error adding memory: {e}", exc_info=True)
+            logger.error(f"Error adding memory: {e}")
             return ""
     
     async def search_memories(
@@ -209,6 +201,7 @@ class MemoryCoordinator:
         
         # If user_id available and refresh needed, get context
         if session_state.user_id and should_refresh:
+            logger.info(f"Retrieving context for user {session_state.user_id}")
             context = await self.retrieve_user_context(session_state)
             
             # Add context as system message if found
