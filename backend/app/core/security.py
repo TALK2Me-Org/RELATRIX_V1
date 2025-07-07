@@ -125,12 +125,21 @@ async def get_current_user_optional(
     Get current user from JWT token (optional - allows anonymous)
     Returns None for anonymous users
     """
+    logger.info(f"get_current_user_optional: credentials = {credentials}")
     if not credentials:
+        logger.info("No credentials provided, returning None")
         return None
     
     try:
-        return await get_current_user(credentials)
-    except HTTPException:
+        logger.info(f"Attempting to get user with token: {credentials.credentials[:20]}...")
+        user = await get_current_user(credentials)
+        logger.info(f"Got user: {user}")
+        return user
+    except HTTPException as e:
+        logger.warning(f"HTTPException in get_current_user_optional: {e.detail}")
+        return None
+    except Exception as e:
+        logger.error(f"Unexpected error in get_current_user_optional: {e}")
         return None
 
 
