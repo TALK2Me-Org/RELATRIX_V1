@@ -44,18 +44,23 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 def verify_token(token: str) -> Dict[str, Any]:
     """Verify JWT token"""
     try:
+        logger.info(f"Verifying token with secret: {settings.supabase_jwt_secret[:20]}...")
         payload = jwt.decode(
             token,
             settings.supabase_jwt_secret,
-            algorithms=["HS256"]
+            algorithms=["HS256"],
+            options={"verify_aud": False}  # Supabase uses custom audience
         )
+        logger.info("Token decoded successfully")
         return payload
     except jwt.ExpiredSignatureError:
+        logger.warning("Token has expired")
         raise HTTPException(
             status_code=401,
             detail="Token has expired"
         )
-    except jwt.InvalidTokenError:
+    except jwt.InvalidTokenError as e:
+        logger.error(f"Invalid token error: {e}")
         raise HTTPException(
             status_code=401,
             detail="Invalid token"
@@ -73,7 +78,9 @@ async def get_current_user(
         return None
     
     try:
+        logger.info("Calling verify_token...")
         payload = verify_token(credentials.credentials)
+        logger.info(f"Token payload: {payload}")
         
         # Extract user info from Supabase JWT
         user = {
@@ -83,13 +90,15 @@ async def get_current_user(
             "is_admin": payload.get("role") == "admin"
         }
         
+        logger.info(f"Extracted user: {user}")
         return user
         
-    except HTTPException:
+    except HTTPException as he:
+        logger.warning(f"HTTPException in get_current_user: {he.detail}")
         # Allow anonymous access
         return None
     except Exception as e:
-        logger.error(f"Error verifying token: {e}")
+        logger.error(f"Error verifying token: {e}", exc_info=True)
         return None
 
 
