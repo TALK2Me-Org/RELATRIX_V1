@@ -1,5 +1,15 @@
 FROM node:18-alpine AS builder
 
+# Build arguments for environment variables
+ARG REACT_APP_API_URL
+ARG REACT_APP_SUPABASE_URL
+ARG REACT_APP_SUPABASE_ANON_KEY
+
+# Set environment variables from build args
+ENV REACT_APP_API_URL=$REACT_APP_API_URL
+ENV REACT_APP_SUPABASE_URL=$REACT_APP_SUPABASE_URL
+ENV REACT_APP_SUPABASE_ANON_KEY=$REACT_APP_SUPABASE_ANON_KEY
+
 # Set working directory
 WORKDIR /app
 
