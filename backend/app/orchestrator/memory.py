@@ -144,6 +144,7 @@ class MemoryCoordinator:
             result = self.mem0_client.add(
                 messages,
                 version="v2",     # Use v2 API to avoid overwriting memories
+                output_format="v1.1",  # Use latest format to avoid deprecation warning
                 async_mode=True,  # Process in background to avoid blocking
                 **params
             )
