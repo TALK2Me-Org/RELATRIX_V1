@@ -164,6 +164,12 @@ RELATRIX_V1/
 ## Changelog
 
 ### 2025-07-07
+- **03:30** - 🔧 Naprawiono system autoryzacji - bezpieczna integracja:
+  - Rozbudowano istniejący `core/security.py` zamiast tworzyć nowy moduł
+  - Dodano Supabase Auth do starego systemu (zachowano kompatybilność)
+  - Naprawiono wszystkie błędy importów
+  - Usunięto duplikaty: `app/auth.py` i `app/config.py`
+  - main.py używa teraz właściwego config z `core/`
 - **03:00** - 🔐 Zaimplementowano pełny system autoryzacji użytkowników:
   - Backend: auth.py z Supabase Auth integration
   - API endpoints: /api/auth/register, /login, /logout, /me, /refresh

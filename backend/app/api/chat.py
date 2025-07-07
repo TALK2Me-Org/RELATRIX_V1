@@ -12,7 +12,7 @@ import json
 
 from app.orchestrator.orchestrator import orchestrator
 from app.orchestrator.models import StreamChunk
-from app.auth import get_current_user_optional
+from app.core.security import get_current_user_optional
 from app.database.connection import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -106,7 +106,7 @@ async def stream_chat(
 @router.get("/chat/session/{session_id}")
 async def get_session_status(
     session_id: str,
-    current_user: Optional[Dict[str, Any]] = Depends(get_current_user)
+    current_user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)
 ):
     """Get current session status"""
     status = await orchestrator.get_session_status(session_id)
