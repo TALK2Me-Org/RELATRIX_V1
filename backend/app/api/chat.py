@@ -66,7 +66,9 @@ async def stream_chat(
     """
     try:
         # Get user ID if authenticated
+        logger.info(f"stream_chat: current_user = {current_user}")
         user_id = current_user.get("id") if current_user else None
+        logger.info(f"stream_chat: extracted user_id = {user_id}")
         
         # Process message through orchestrator
         async def generate():
