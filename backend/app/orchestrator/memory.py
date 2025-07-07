@@ -134,11 +134,11 @@ class MemoryCoordinator:
             )
             
             # Extract memory ID from Cloud API response
-            if isinstance(result, dict) and 'memories' in result:
-                # Cloud API returns {"memories": [{"id": "...", ...}]}
-                memories = result.get('memories', [])
-                if memories:
-                    memory_id = memories[0].get('id', '')
+            if isinstance(result, dict):
+                # Mem0 returns {"results": [{"id": "...", ...}]}
+                results = result.get('results', [])
+                if results:
+                    memory_id = results[0].get('id', '')
                     logger.debug(f"Added memory for user {user_id}: {memory_id}")
                     return memory_id
             
