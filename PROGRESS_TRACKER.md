@@ -2,15 +2,18 @@
 
 ## Ostatnia aktualizacja: 2025-07-07 05:30 CET
 
-## Status projektu: 50% Complete
+## Status projektu: 44% Complete
 
 ## Quick Stats
-- ✅ Fazy ukończone: 3.5/6
+- ✅ Fazy ukończone: 3/6 (+ częściowo FAZA 4)
+- 🚧 W trakcie: User Authentication deployment
+- ❌ Do zrobienia: Admin panel, testy, telemetria, transfer triggers
+- 🚀 Deployment: Railway (działający)
+- 🔐 Nowe: System autoryzacji użytkowników (Supabase) - DZIAŁA!
 - ✅ Autoryzacja: W pełni działająca (Supabase Auth)
 - ✅ Chat: Działa z opcjonalną autoryzacją
 - ⚠️ Mem0: Skonfigurowane ale nie aktywne
 - ❌ Do zrobienia: Admin panel, transfer triggers, pełna integracja Mem0
-- 🚀 Deployment: Railway (wszystkie serwisy działają)
 
 ## Architektura systemu
 
@@ -119,13 +122,16 @@ RELATRIX_V1/
   - ❌ Tylko w bazie, brak specjalnej logiki
   - Używają swoich system promptów z DB
 
-### ✅ FAZA 4: Backend API & Database [70%]
+### ✅ FAZA 4: Backend API & Database [85%]
 - [x] Task 4.1: Database Models [2025-07-05 ~16:00]
   - PostgreSQL na Railway
   - Tabele: agents, chat_sessions, agent_transfers
   
-- [ ] Task 4.2: Supabase Authentication
-  - ❌ Pominięte, używamy prostej auth
+- [x] Task 4.2: User Authentication System [2025-07-07 05:30]
+  - ✅ Supabase Auth w pełni zintegrowana!
+  - ✅ JWT tokeny działają
+  - ✅ Rejestracja/login/logout działa
+  - ✅ Opcjonalna autoryzacja (goście też mogą korzystać)
   
 - [x] Task 4.3: Main FastAPI Application [2025-07-06 ~10:00]
   - Plik: main.py
