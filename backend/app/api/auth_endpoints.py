@@ -14,7 +14,7 @@ router = APIRouter(prefix="/auth", tags=["authentication"])
 class RegisterRequest(BaseModel):
     """User registration request"""
     email: EmailStr
-    password: str = Field(..., min_length=6)
+    password: str = Field(min_length=6)
     metadata: Optional[Dict[str, Any]] = None
 
 
