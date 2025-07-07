@@ -180,10 +180,18 @@ async def quick_mem0_test():
             user_id="test-user-debug"
         )
         
+        # Also test search
+        search_result = orchestrator.memory.mem0_client.search(
+            query="pizza food",
+            user_id="test-user-debug",
+            limit=5
+        )
+        
         return {
             "success": True,
-            "raw_result": result,
-            "result_type": str(type(result))
+            "add_result": result,
+            "search_result": search_result,
+            "search_type": str(type(search_result))
         }
     except Exception as e:
         return {
