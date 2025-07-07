@@ -139,9 +139,11 @@ class MemoryCoordinator:
             if run_id:
                 params["run_id"] = run_id
             
-            # Use Mem0 Cloud API
+            # Use Mem0 Cloud API with async mode for better performance
+            logger.info(f"Mem0 add called with {len(messages)} messages for user {user_id}")
             result = self.mem0_client.add(
                 messages,
+                async_mode=True,  # Process in background to avoid blocking
                 **params
             )
             
@@ -190,6 +192,11 @@ class MemoryCoordinator:
             # Use Mem0 Cloud API search
             results = self.mem0_client.search(**params)
             
+            # Log search results for debugging
+            logger.info(f"Mem0 search for user {user_id} with query '{query}' returned {len(results) if isinstance(results, list) else 0} memories")
+            if results and len(results) > 0:
+                logger.debug(f"First memory sample: {results[0]}")
+            
             # Mem0 returns a list directly
             return results if isinstance(results, list) else []
             
@@ -206,6 +213,9 @@ class MemoryCoordinator:
         # Get recent messages
         recent_messages = session_state.conversation_history[-max_messages:]
         
+        # Check if this is first message in session (always refresh for new sessions)
+        is_first_message = len(session_state.conversation_history) <= 1
+        
         # Check if we should refresh memory based on mode and triggers
         last_user_msg = None
         if recent_messages:
@@ -216,10 +226,14 @@ class MemoryCoordinator:
         
         should_refresh = await self.should_refresh_memory(session_state, last_user_msg)
         
-        # If user_id available and refresh needed, get context
-        if session_state.user_id and should_refresh:
-            logger.info(f"Refreshing memory context for user {session_state.user_id}")
-            context = await self.retrieve_user_context(session_state)
+        # Force refresh for first message or if triggers say so
+        if session_state.user_id and (is_first_message or should_refresh):
+            if is_first_message:
+                logger.info(f"First message in session, forcing Mem0 retrieval for user {session_state.user_id}")
+            else:
+                logger.info(f"Refreshing memory context for user {session_state.user_id}")
+            
+            context = await self.retrieve_user_context(session_state, force_refresh=is_first_message)
             
             # Add context as system message if found
             if context.get("memories"):
@@ -237,6 +251,8 @@ class MemoryCoordinator:
                 )
                 recent_messages.insert(0, memory_msg)
                 logger.info(f"Added {len(context['memories'])} memories to context")
+            else:
+                logger.info(f"No memories found for user {session_state.user_id}")
         
         return recent_messages
     
@@ -447,6 +463,7 @@ class MemoryCoordinator:
         
         # Always refresh mode
         if config.mode == MemoryMode.ALWAYS_FRESH:
+            logger.debug(f"Memory mode is ALWAYS_FRESH, should refresh: True")
             return True
         
         # Cache first mode - only on session start
@@ -454,7 +471,9 @@ class MemoryCoordinator:
             # Check if we have cached context
             cache_key = f"context:{session_state.session_id}"
             cached = await self.redis_client.get(cache_key)
-            return cached is None
+            should_refresh = cached is None
+            logger.debug(f"Memory mode is CACHE_FIRST, cache exists: {cached is not None}, should refresh: {should_refresh}")
+            return should_refresh
         
         # Smart triggers mode
         if config.mode == MemoryMode.SMART_TRIGGERS:
@@ -558,15 +577,19 @@ class MemoryCoordinator:
                 if metrics:
                     metrics.add_cache_hit()
                 logger.debug(f"Cache hit for session {session_state.session_id}")
-                return json.loads(cached)
+                cached_data = json.loads(cached)
+                logger.info(f"Retrieved {len(cached_data.get('memories', []))} memories from Redis cache")
+                return cached_data
         
         # Cache miss - retrieve from Mem0
         if metrics:
             metrics.add_cache_miss()
         
+        logger.info(f"Cache miss for session {session_state.session_id}, retrieving from Mem0")
         start_time = time.time()
         context = await self._retrieve_from_mem0(session_state, config)
         retrieval_time = (time.time() - start_time) * 1000  # Convert to ms
+        logger.info(f"Mem0 retrieval took {retrieval_time:.2f}ms, got {len(context.get('memories', []))} memories")
         
         # Update metrics
         if metrics:
@@ -609,11 +632,13 @@ class MemoryCoordinator:
             last_user_msg = "user conversation history"
         
         # Search memories with limit
+        logger.info(f"Searching Mem0 for user {session_state.user_id} with query: {last_user_msg[:50]}...")
         memories = await self.search_memories(
             session_state.user_id,
             last_user_msg,
             limit=config.max_memories_per_retrieval
         )
+        logger.info(f"Found {len(memories)} memories for user {session_state.user_id}")
         
         # Truncate if exceeds token limit
         context = {
