@@ -1,15 +1,16 @@
 # RELATRIX Progress Tracker
 
-## Ostatnia aktualizacja: 2025-07-07 03:00 PL
+## Ostatnia aktualizacja: 2025-07-07 05:30 CET
 
-## Status projektu: 42% Complete
+## Status projektu: 50% Complete
 
 ## Quick Stats
-- ✅ Fazy ukończone: 3/6
-- 🚧 W trakcie: User Authentication deployment
-- ❌ Do zrobienia: Admin panel, testy, telemetria, transfer triggers
-- 🚀 Deployment: Railway (działający)
-- 🔐 Nowe: System autoryzacji użytkowników (Supabase)
+- ✅ Fazy ukończone: 3.5/6
+- ✅ Autoryzacja: W pełni działająca (Supabase Auth)
+- ✅ Chat: Działa z opcjonalną autoryzacją
+- ⚠️ Mem0: Skonfigurowane ale nie aktywne
+- ❌ Do zrobienia: Admin panel, transfer triggers, pełna integracja Mem0
+- 🚀 Deployment: Railway (wszystkie serwisy działają)
 
 ## Architektura systemu
 
@@ -164,6 +165,26 @@ RELATRIX_V1/
 ## Changelog
 
 ### 2025-07-07
+- **05:30** - ✅ AUTORYZACJA W PEŁNI DZIAŁA! Podsumowanie sesji:
+  - Chat działa z zalogowanymi użytkownikami
+  - Orchestrator tworzy sesje z user_id
+  - Frontend poprawnie wysyła tokeny JWT
+  - Mem0 jest skonfigurowane ale nieaktywne (brak logów)
+  - System gotowy do dalszego rozwoju
+- **05:15** - 🔧 Naprawiono async/await w get_current_user_optional
+  - Dodano brakujące async i await
+  - Naprawiono błąd 500 przy autoryzacji w chacie
+- **05:00** - 🔧 Naprawiono autoryzację w chat API:
+  - Zmieniono nazwę tokenu z 'auth_token' na 'relatrix_access_token'
+  - Dodano Authorization header do streamChat
+  - Chat teraz wysyła token użytkownika
+- **04:45** - 🔧 Naprawiono rejestrację - email verification flow:
+  - Backend zwraca 200 z RegistrationPendingResponse
+  - Frontend pokazuje zielony komunikat sukcesu
+  - Jasna informacja o konieczności potwierdzenia emaila
+- **04:35** - 🔧 Naprawiono frontend env vars (localhost problem):
+  - Dodano ARG/ENV do Dockerfile dla React build-time vars
+  - Frontend teraz używa właściwego API URL z Railway
 - **04:20** - 🔧 Naprawiono wszystkie zależności dla autentykacji:
   - Dodano brakujące pakiety do requirements.txt: PyJWT>=2.8.0, email-validator>=2.0.0
   - Naprawiono import get_current_user w chat.py
@@ -239,28 +260,31 @@ RELATRIX_V1/
    - Logika w transfer.py nie jest zaimplementowana
    - Agenci się nie przełączają automatycznie
 
-2. **🟢 RESOLVED: Mem0 gotowe do użycia**
-   - API key skonfigurowany
-   - System autoryzacji dodany - user_id dostępny
-   - Pamięć długoterminowa będzie działać po deploymencie
+2. **🟡 WARNING: Mem0 nieaktywne mimo konfiguracji**
+   - API key jest ustawiony
+   - User_id jest przekazywany
+   - ALE: Brak logów z Mem0 API - może nie jest wywoływane
+   - Do zbadania: memory.py może nie używać Mem0 gdy jest user_id
 
 3. **🟡 IMPORTANT: Brak admin panelu**
    - Nie można edytować agentów bez SQL
    - Brak metryk i monitoringu
+   - Nie można zmienić Memory Modes z UI
 
-4. **🟠 MINOR: Pydantic deprecation warnings**
+4. **🟠 MINOR: Email verification links**
+   - Linki w emailach odnoszą się do localhost
+   - Wymaga konfiguracji w Supabase Dashboard
+
+5. **🟠 MINOR: Pydantic deprecation warnings**
    - memory.py używa .json() zamiast .model_dump_json()
 
 ## Next Steps (Priorytety)
 
-1. **User Authentication System** [UKOŃCZONE!]
-   - ✅ Backend gotowy (auth.py, endpoints)
-   - ✅ Frontend gotowy (formularze, context)
-   - ✅ Integracja z Supabase Auth
-   - ✅ Opcjonalna autoryzacja (goście też mogą korzystać)
-   - ⏳ Deploy na Railway (w trakcie)
-   - ⏳ Test rejestracji i logowania
-   - ⏳ Sprawdzenie czy Mem0 działa z user_id
+1. **Debug i aktywacja Mem0** [CRITICAL - NEXT]
+   - Sprawdzić dlaczego Mem0 nie jest wywoływane
+   - Debugować memory.py - czy używa Mem0 API
+   - Przetestować zapisywanie i odczyt kontekstu
+   - Upewnić się że Memory Modes działają z Mem0
 
 2. **UI dla Memory Modes** [HIGH]
    - Przełącznik trybów w admin panelu

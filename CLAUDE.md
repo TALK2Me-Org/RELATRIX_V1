@@ -116,6 +116,35 @@ POST /api/memory/cache/clear
 - W Test Mode wszystko jest logowane dla analizy
 - Smart Triggers konfigurowalne per sesja
 
+## System Autoryzacji (DZIAŁA!)
+
+### Status: ✅ W pełni działający
+- Backend: Supabase Auth + JWT
+- Frontend: React Context + localStorage
+- Tokeny: 'relatrix_access_token' i 'relatrix_refresh_token'
+- Email verification: Wymaga potwierdzenia (link w mailu)
+
+### Testowanie autoryzacji:
+```bash
+# Rejestracja (wymaga prawdziwego emaila, nie @example.com)
+curl -X POST https://relatrix-backend.up.railway.app/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email": "test@gmail.com", "password": "test123456"}'
+
+# Logowanie (po potwierdzeniu emaila)
+curl -X POST https://relatrix-backend.up.railway.app/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "test@gmail.com", "password": "test123456"}'
+
+# Test z tokenem
+curl -H "Authorization: Bearer YOUR_TOKEN" \
+  https://relatrix-backend.up.railway.app/api/memory/mode
+```
+
+### Known Issues:
+- Email verification links odnoszą się do localhost (do naprawy w Supabase Dashboard)
+- Mem0 nie jest aktywne mimo że user_id jest przekazywany
+
 ## Common Commands
 
 ### Git Commands
