@@ -15,11 +15,13 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchT
   });
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string>('');
+  const [successMessage, setSuccessMessage] = useState<string>('');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccessMessage('');
 
     // Validate passwords match
     if (formData.password !== confirmPassword) {
@@ -36,8 +38,21 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchT
     setLoading(true);
 
     try {
-      await register(formData);
-      onSuccess?.();
+      const response = await register(formData);
+      
+      // Check if email verification is required
+      if ('requires_verification' in response) {
+        // Show success message for email verification
+        setSuccessMessage(response.message);
+        setError('');
+        // Don't redirect immediately, let user see the message
+        setTimeout(() => {
+          onSuccess?.();
+        }, 3000);
+      } else {
+        // Normal success with immediate login
+        onSuccess?.();
+      }
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Registration failed. Please try again.');
     } finally {
@@ -64,6 +79,12 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchT
         {error && (
           <div className="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
             {error}
+          </div>
+        )}
+        
+        {successMessage && (
+          <div className="mb-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
+            {successMessage}
           </div>
         )}
 

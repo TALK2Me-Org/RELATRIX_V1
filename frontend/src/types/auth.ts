@@ -22,3 +22,9 @@ export interface RegisterRequest {
   password: string;
   metadata?: Record<string, any>;
 }
+
+export interface RegistrationPendingResponse {
+  message: string;
+  requires_verification: boolean;
+  user_email: string;
+}

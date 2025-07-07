@@ -52,7 +52,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const register = async (data: RegisterRequest) => {
     const response = await authService.register(data);
-    setUser(response.user);
+    
+    // Check if it's a successful registration with user data
+    if ('user' in response) {
+      setUser(response.user);
+    }
+    
+    // Return the response so the component can handle it
+    return response;
   };
 
   const logout = async () => {

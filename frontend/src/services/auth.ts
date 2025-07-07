@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { AuthResponse, LoginRequest, RegisterRequest, User } from '../types/auth';
+import { AuthResponse, LoginRequest, RegisterRequest, User, RegistrationPendingResponse } from '../types/auth';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
@@ -28,9 +28,14 @@ export const authService = {
   },
 
   // API calls
-  async register(data: RegisterRequest): Promise<AuthResponse> {
-    const response = await axios.post<AuthResponse>(`${API_URL}/api/auth/register`, data);
-    this.setTokens(response.data.access_token, response.data.refresh_token);
+  async register(data: RegisterRequest): Promise<AuthResponse | RegistrationPendingResponse> {
+    const response = await axios.post<AuthResponse | RegistrationPendingResponse>(`${API_URL}/api/auth/register`, data);
+    
+    // Check if it's a successful registration with tokens
+    if ('access_token' in response.data) {
+      this.setTokens(response.data.access_token, response.data.refresh_token);
+    }
+    
     return response.data;
   },
 
