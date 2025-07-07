@@ -15,7 +15,7 @@ const api = axios.create({
 
 // Add auth token if available
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('auth_token');
+  const token = localStorage.getItem('relatrix_access_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -38,10 +38,12 @@ export const chatAPI = {
     onError?: (error: Error) => void
   ) => {
     try {
+      const token = localStorage.getItem('relatrix_access_token');
       const response = await fetch(`${API_BASE_URL}/api/chat/stream`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` })
         },
         body: JSON.stringify({ message, session_id: sessionId }),
       });
