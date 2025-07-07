@@ -4,7 +4,7 @@ Authentication API endpoints
 
 from fastapi import APIRouter, HTTPException, Depends, status
 from pydantic import BaseModel, EmailStr, Field
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Union
 
 from app.core.security import auth_service, get_current_user, get_current_user_optional
 
@@ -37,7 +37,14 @@ class AuthResponse(BaseModel):
     user: Dict[str, Any]
 
 
-@router.post("/register", response_model=AuthResponse)
+class RegistrationPendingResponse(BaseModel):
+    """Registration response when email verification is required"""
+    message: str
+    requires_verification: bool = True
+    user_email: str
+
+
+@router.post("/register", response_model=Union[AuthResponse, RegistrationPendingResponse])
 async def register(request: RegisterRequest):
     """
     Register a new user
@@ -52,20 +59,30 @@ async def register(request: RegisterRequest):
         metadata=request.metadata
     )
     
-    if not result.get("session"):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Registration successful but no session created. Please login."
+    # Check if session was created (no email verification required)
+    if result.get("session"):
+        return AuthResponse(
+            access_token=result["session"].access_token,
+            refresh_token=result["session"].refresh_token,
+            user={
+                "id": result["user"].id,
+                "email": result["user"].email,
+                "metadata": result["user"].user_metadata
+            }
         )
     
-    return AuthResponse(
-        access_token=result["session"].access_token,
-        refresh_token=result["session"].refresh_token,
-        user={
-            "id": result["user"].id,
-            "email": result["user"].email,
-            "metadata": result["user"].user_metadata
-        }
+    # Registration successful but email verification required
+    if result.get("user"):
+        return RegistrationPendingResponse(
+            message="Registration successful! Please check your email to verify your account.",
+            requires_verification=True,
+            user_email=result["user"].email
+        )
+    
+    # This shouldn't happen, but just in case
+    raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail="Registration failed. Please try again."
     )
 
 
