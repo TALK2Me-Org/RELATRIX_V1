@@ -10,7 +10,7 @@ from typing import Dict, Any
 import logging
 import os
 
-from .core.config import settings
+from .config import settings
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
