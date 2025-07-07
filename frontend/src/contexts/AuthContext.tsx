@@ -1,12 +1,12 @@
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
-import { User, LoginRequest, RegisterRequest } from '../types/auth';
+import { User, LoginRequest, RegisterRequest, AuthResponse, RegistrationPendingResponse } from '../types/auth';
 import { authService } from '../services/auth';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (data: LoginRequest) => Promise<void>;
-  register: (data: RegisterRequest) => Promise<void>;
+  register: (data: RegisterRequest) => Promise<AuthResponse | RegistrationPendingResponse>;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
 }
