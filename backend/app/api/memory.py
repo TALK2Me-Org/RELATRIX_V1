@@ -165,40 +165,6 @@ async def clear_cache(
         return {"status": "success", "message": f"Cleared {cleared} cache entries"}
 
 
-@router.post("/debug/quick-test")
-async def quick_mem0_test():
-    """Quick test of Mem0 functionality"""
-    try:
-        orchestrator.memory._init_mem0()
-        if not orchestrator.memory.mem0_client:
-            return {"error": "Mem0 client not initialized"}
-        
-        # Direct test
-        messages = [{"role": "user", "content": "I like pizza"}]
-        result = orchestrator.memory.mem0_client.add(
-            messages,
-            user_id="test-user-debug"
-        )
-        
-        # Also test search
-        search_result = orchestrator.memory.mem0_client.search(
-            query="pizza food",
-            user_id="test-user-debug",
-            limit=5
-        )
-        
-        return {
-            "success": True,
-            "add_result": result,
-            "search_result": search_result,
-            "search_type": str(type(search_result))
-        }
-    except Exception as e:
-        return {
-            "success": False,
-            "error": str(e),
-            "error_type": str(type(e))
-        }
 
 
 @router.get("/debug/status")

@@ -170,10 +170,7 @@ class MemoryCoordinator:
                 limit=limit
             )
             
-            # Cloud API returns {"memories": [...]}
-            if isinstance(results, dict) and 'memories' in results:
-                return results.get('memories', [])
-            
+            # Mem0 returns a list directly
             return results if isinstance(results, list) else []
             
         except Exception as e:
@@ -201,7 +198,6 @@ class MemoryCoordinator:
         
         # If user_id available and refresh needed, get context
         if session_state.user_id and should_refresh:
-            logger.info(f"Retrieving context for user {session_state.user_id}")
             context = await self.retrieve_user_context(session_state)
             
             # Add context as system message if found

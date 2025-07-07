@@ -112,7 +112,6 @@ class Orchestrator:
         # Update user_id if provided
         if user_id and not session.user_id:
             session.user_id = user_id
-            logger.info(f"Session {session_id} updated with user_id: {user_id}")
         
         # Add user message to history
         user_msg = Message(
