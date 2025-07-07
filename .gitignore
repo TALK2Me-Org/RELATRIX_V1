@@ -137,3 +137,6 @@ alembic/versions/*.py
 # Frontend build
 frontend/build/
 frontend/dist/
+
+# Developer tools (temporary scripts)
+_dev_tools/
