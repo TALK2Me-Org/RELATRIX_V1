@@ -178,19 +178,12 @@ class MemoryCoordinator:
             return []
         
         try:
-            # Prepare search parameters
-            params = {
-                "query": query,
-                "user_id": user_id,
-                "limit": limit,
-                "output_format": "v1.1"  # Use latest format
-            }
-            
-            if agent_id:
-                params["agent_id"] = agent_id
-            
-            # Use Mem0 Cloud API search
-            results = self.mem0_client.search(**params)
+            # Use Mem0 Cloud API search - simplified to match documentation
+            results = self.mem0_client.search(
+                query=query,
+                user_id=user_id,
+                limit=limit
+            )
             
             # Log search results for debugging
             logger.info(f"Mem0 search for user {user_id} with query '{query}' returned {len(results) if isinstance(results, list) else 0} memories")
