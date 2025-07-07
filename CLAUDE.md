@@ -78,6 +78,12 @@ railway run -s backend env
 4. Przy zmianach architektury: aktualizuj ARCHITECTURE.md
 5. Używaj TodoWrite/TodoRead do śledzenia bieżących zadań
 
+### WAŻNE: Zasady edycji dokumentów MD:
+- **NIGDY nie usuwaj** zawartości z PROGRESS_TRACKER.md, TASK_LIST.md, ARCHITECTURE.md
+- **Tylko dodawaj** nowe wpisy lub **zmieniaj status** (np. z ❌ na ✅)
+- Używaj ~~przekreślenia~~ żeby oznaczyć że coś jest nieaktualne
+- Dodawaj datę przy statusie: [2025-MM-DD HH:MM PL]
+
 ### Strefa czasowa:
 - **ZAWSZE używaj czasu polskiego (Europe/Warsaw, UTC+1/UTC+2)**
 - W PROGRESS_TRACKER.md i innych dokumentach timestamp w formacie: `[YYYY-MM-DD HH:MM PL]`
