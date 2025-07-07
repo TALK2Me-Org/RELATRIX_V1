@@ -131,6 +131,18 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 3. Test thoroughly before marking as complete
 4. Always verify Railway deployments after pushing
 
+## Developer Tools
+
+### Katalog _dev_tools/
+Zawiera tymczasowe skrypty używane podczas development:
+- Skrypty migracyjne (test_db_migration.py, simple_migration.py, etc.)
+- Narzędzia pomocnicze które mogą się przydać w przyszłości
+- NIE commitować do repozytorium (dodane do .gitignore)
+
+Jeśli potrzebujesz wykonać migrację, użyj:
+1. HTTP endpoint: `POST /api/admin/run-memory-modes-migration-v2`
+2. Lub skryptów z _dev_tools/ jako wzorca
+
 ## Environment Variables Needed
 
 ### Backend (Railway)
