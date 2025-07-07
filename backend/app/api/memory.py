@@ -165,6 +165,46 @@ async def clear_cache(
         return {"status": "success", "message": f"Cleared {cleared} cache entries"}
 
 
+@router.get("/debug/status")
+async def debug_memory_status():
+    """Debug endpoint to check Mem0 initialization status"""
+    from app.orchestrator.memory import HAS_MEM0
+    
+    status = {
+        "mem0_available": HAS_MEM0,
+        "mem0_initialized": False,
+        "mem0_client": None,
+        "redis_initialized": orchestrator.memory._initialized,
+        "error": None
+    }
+    
+    # Check Mem0 initialization
+    if orchestrator.memory._mem0_initialized:
+        status["mem0_initialized"] = True
+        status["mem0_client"] = "MemoryClient instance active"
+    else:
+        # Try to initialize to see what error we get
+        try:
+            orchestrator.memory._init_mem0()
+            status["mem0_initialized"] = orchestrator.memory._mem0_initialized
+            if orchestrator.memory.mem0_client:
+                status["mem0_client"] = "MemoryClient instance created"
+        except Exception as e:
+            status["error"] = str(e)
+    
+    # Check API key
+    from app.core.config import settings
+    api_key = getattr(settings, 'mem0_api_key', 'NOT_SET')
+    if api_key.startswith('m0-'):
+        status["api_key_status"] = "Looks valid (starts with m0-)"
+    elif api_key.startswith('m0-placeholder'):
+        status["api_key_status"] = "PLACEHOLDER - needs real API key"
+    else:
+        status["api_key_status"] = "Invalid or not set"
+    
+    return status
+
+
 @router.get("/modes")
 async def list_memory_modes(current_user: Dict = Depends(get_current_user)):
     """List all available memory modes with descriptions"""
