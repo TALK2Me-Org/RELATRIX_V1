@@ -166,7 +166,11 @@ class Orchestrator:
             return
         
         # Get context window
+        import time
+        start_time = time.time()
         context_messages = await self.memory.get_context_window(session)
+        context_time = time.time() - start_time
+        logger.info(f"Context retrieval took {context_time:.2f}s")
         
         # Format messages for API
         api_messages = self.streaming.format_messages_for_api(
@@ -175,13 +179,22 @@ class Orchestrator:
         )
         
         # Stream response
+        stream_start = time.time()
+        logger.info(f"Starting OpenAI stream for session {session_id}")
         response_content = ""
+        first_chunk_received = False
         async for chunk in self.streaming.stream_response(
             current_agent,
             api_messages,
             session_id,
             on_transfer_suggestion=self._handle_transfer_suggestion
         ):
+            # Log time to first chunk
+            if not first_chunk_received:
+                first_chunk_time = time.time() - stream_start
+                logger.info(f"First chunk received after {first_chunk_time:.2f}s")
+                first_chunk_received = True
+                
             # Accumulate response
             if chunk.type == "content":
                 response_content += chunk.content

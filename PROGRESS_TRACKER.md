@@ -1,8 +1,8 @@
 # RELATRIX Progress Tracker
 
-## Ostatnia aktualizacja: 2025-07-07 17:00 CET
+## Ostatnia aktualizacja: 2025-07-07 17:30 CET
 
-## Status projektu: 47% Complete
+## Status projektu: 48% Complete
 
 ## Quick Stats
 - ✅ Fazy ukończone: 3/6 (+ częściowo FAZA 4)
@@ -171,6 +171,11 @@ RELATRIX_V1/
 ## Changelog
 
 ### 2025-07-07
+- **17:30** - 🔴 KRYTYCZNA NAPRAWA: Memory context był POMIJANY!
+  - Naprawiono format_messages_for_api() w streaming.py
+  - Usunięto kod który pomijał memory_context przy wysyłaniu do OpenAI
+  - Teraz model AI faktycznie widzi wcześniejsze wspomnienia z Mem0
+  - Dodano timing logi do debugowania wolnego streamu
 - **17:00** - 🔧 Naprawiono problemy z wydajnością Mem0:
   - Dodano async_mode=True do zapisów - nie blokuje już streamu odpowiedzi
   - Naprawiono retrieval przy nowej sesji - zawsze pobiera memories dla pierwszej wiadomości
