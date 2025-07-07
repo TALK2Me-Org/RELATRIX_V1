@@ -11,7 +11,8 @@
 - 🚀 Deployment: Railway (działający)
 - ✅ System autoryzacji: W pełni działający (Supabase Auth)
 - ✅ Chat: Działa z autoryzacją i pamięcią
-- ✅ Mem0 v2: Naprawione - zapisuje właściwe wspomnienia bez UPDATE
+- ~~🔧 Mem0: W trakcie naprawy - zmiana z podsumowań na rzeczywiste wiadomości~~
+- ✅ Mem0 v2: NAPRAWIONE [20:30] - zapisuje właściwe wspomnienia bez UPDATE
 - ✅ Memory Modes: W pełni zaimplementowane
 - ❌ Do zrobienia: Admin panel, transfer triggers, UI dla Memory Modes
 
@@ -299,10 +300,18 @@ RELATRIX_V1/
    - Logika w transfer.py nie jest zaimplementowana
    - Agenci się nie przełączają automatycznie
 
-2. **✅ NAPRAWIONE: Mem0 v2 migration**
-   - Problem z UPDATE został rozwiązany
-   - add() używa v2, search() nie (zgodnie z dokumentacją)
-   - Mem0 teraz tworzy nowe wspomnienia zamiast nadpisywać
+2. **~~🟡 FIXING~~** → **✅ NAPRAWIONE: Mem0 zapisywało podsumowania zamiast wiadomości** [2025-07-07]
+   - ✅ Naprawiono: save_conversation_memory() teraz wysyła rzeczywiste wiadomości
+   - ✅ Dodano: format_messages_for_mem0() helper
+   - ✅ Zaktualizowano: add_memory() przyjmuje teraz listę messages
+   - ✅ Poprawiono: get_context_window() pobiera memories z Mem0
+   - ✅ KRYTYCZNE ODKRYCIE [18:00]: Używaliśmy Mem0 v1 (przestarzałe) zamiast v2!
+     - Problem: Mem0 v1 nadpisuje oryginalne słowa użytkownika wersją AI
+     - Przyczyna: v1 wymaga pełnej historii, v2 automatycznie zarządza kontekstem
+   - ✅ NAPRAWIONE [20:30]: Migracja do v2 zakończona sukcesem
+     - add() używa version="v2" - zapobiega UPDATE problemom
+     - search() NIE używa version="v2" (tylko dla Criteria Retrieval)
+     - Dokumentacja: MEM0_GUIDE.md i MEM0_INSTRUKCJE_PL.md utworzone
 
 3. **🟡 IMPORTANT: Brak admin panelu**
    - Nie można edytować agentów bez SQL
@@ -318,32 +327,33 @@ RELATRIX_V1/
 
 ## Next Steps (Priorytety)
 
-1. **Admin Panel - Backend** [HIGH - NEXT]
+1. **~~Migracja Mem0 do v2 API~~** [CRITICAL - ✅ ZROBIONE 2025-07-07]
+   - ~~Dodać version="v2" do wszystkich wywołań add() i search()~~
+   - ~~Zaktualizować memory.py zgodnie z dokumentacją v2~~
+   - ~~Przetestować czy v2 rozwiązuje problem aktualizowania wspomnień~~
+   - ~~Upewnić się że kontekst jest automatycznie zarządzany~~
+
+2. **Admin Panel - Backend** [HIGH - NEXT]
    - Dashboard API endpoints
    - User kartoteki endpoints
    - Memory modes configuration API
    - Monitoring endpoints
 
-2. **Admin Panel - Frontend** [HIGH]
+3. **Admin Panel - Frontend** [HIGH]
    - Dashboard z metrykami KPI
    - Kartoteki użytkowników
    - UI dla Memory Modes (przełącznik trybów)
    - Sandbox 7 modeli AI
 
-3. **Implementacja transfer triggers** [MEDIUM]
+4. **Implementacja transfer triggers** [MEDIUM]
    - Dokończyć transfer.py
    - Regex matching dla trigger phrases
    - Testy przełączania agentów
 
-4. **Telemetria i monitoring** [MEDIUM]
+5. **Telemetria i monitoring** [MEDIUM]
    - Tracking kosztów OpenAI/Mem0
    - Metryki użycia per user
    - Alerty przy przekroczeniu limitów
-
-5. **Testy E2E** [LOW]
-   - Automated tests dla głównych flow
-   - Performance testing
-   - Load testing
 
 ## Deployment Info
 
