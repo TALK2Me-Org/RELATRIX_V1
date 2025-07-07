@@ -179,10 +179,6 @@ class StreamingHandler:
         
         # Add conversation messages
         for msg in messages:
-            # Skip memory context messages in API call
-            if msg.metadata.get("type") == "memory_context":
-                continue
-                
             formatted.append({
                 "role": msg.role,
                 "content": msg.content
