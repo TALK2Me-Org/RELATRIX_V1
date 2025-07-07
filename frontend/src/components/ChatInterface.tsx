@@ -1,10 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Bot, User } from 'lucide-react';
+import { Send, Bot, User, LogOut } from 'lucide-react';
 import { Message, Agent, StreamChunk } from '../types/chat';
 import { chatAPI } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
 export const ChatInterface: React.FC = () => {
+  const { user, logout, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
@@ -104,12 +108,39 @@ export const ChatInterface: React.FC = () => {
         <div className="max-w-4xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <h1 className="text-xl font-semibold text-gray-800">RELATRIX Chat</h1>
-            {currentAgent && (
+            <div className="flex items-center space-x-4">
+              {currentAgent && (
+                <div className="flex items-center space-x-2">
+                  <Bot className="w-5 h-5 text-blue-600" />
+                  <span className="text-sm font-medium text-gray-700">{currentAgent.name}</span>
+                </div>
+              )}
               <div className="flex items-center space-x-2">
-                <Bot className="w-5 h-5 text-blue-600" />
-                <span className="text-sm font-medium text-gray-700">{currentAgent.name}</span>
+                {isAuthenticated ? (
+                  <>
+                    <User className="w-5 h-5 text-gray-600" />
+                    <span className="text-sm text-gray-700">{user?.email}</span>
+                    <button
+                      onClick={async () => {
+                        await logout();
+                        navigate('/auth');
+                      }}
+                      className="ml-2 text-sm text-gray-500 hover:text-gray-700"
+                      title="Logout"
+                    >
+                      <LogOut className="w-4 h-4" />
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => navigate('/auth')}
+                    className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                  >
+                    Login / Register
+                  </button>
+                )}
               </div>
-            )}
+            </div>
           </div>
         </div>
       </div>
