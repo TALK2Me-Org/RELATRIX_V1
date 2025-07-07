@@ -139,10 +139,11 @@ class MemoryCoordinator:
             if run_id:
                 params["run_id"] = run_id
             
-            # Use Mem0 Cloud API with async mode for better performance
-            logger.info(f"Mem0 add called with {len(messages)} messages for user {user_id}")
+            # Use Mem0 Cloud API v2 with async mode for better performance
+            logger.info(f"Mem0 v2 add called with {len(messages)} messages for user {user_id}")
             result = self.mem0_client.add(
                 messages,
+                version="v2",     # Use v2 API to avoid overwriting memories
                 async_mode=True,  # Process in background to avoid blocking
                 **params
             )
@@ -153,7 +154,8 @@ class MemoryCoordinator:
                 results = result.get('results', [])
                 if results:
                     memory_id = results[0].get('id', '')
-                    logger.debug(f"Added memory for user {user_id}: {memory_id}")
+                    logger.info(f"Mem0 v2 added memory for user {user_id}: {memory_id}")
+                    logger.debug(f"Full v2 result: {results[0]}")
                     return memory_id
             
             return ""
@@ -178,15 +180,16 @@ class MemoryCoordinator:
             return []
         
         try:
-            # Use Mem0 Cloud API search - simplified to match documentation
+            # Use Mem0 Cloud API v2 search - simplified to match documentation
             results = self.mem0_client.search(
                 query=query,
                 user_id=user_id,
-                limit=limit
+                limit=limit,
+                version="v2"  # Use v2 API for better context management
             )
             
             # Log search results for debugging
-            logger.info(f"Mem0 search for user {user_id} with query '{query}' returned {len(results) if isinstance(results, list) else 0} memories")
+            logger.info(f"Mem0 v2 search for user {user_id} with query '{query}' returned {len(results) if isinstance(results, list) else 0} memories")
             if results and len(results) > 0:
                 logger.debug(f"First memory sample: {results[0]}")
             
