@@ -2,6 +2,9 @@
 
 This file contains important information for Claude to remember across sessions.
 
+## Pracuję z Nati! 👋
+Nati (Natalia Rybarczyk) jest vibecoderką i potrzebuje prostych wyjaśnień technicznych.
+
 ## Railway CLI Configuration
 
 ### Authentication
@@ -64,16 +67,20 @@ railway run -s backend env
 
 ### Przy każdej sesji sprawdzaj i aktualizuj:
 1. **PROGRESS_TRACKER.md** - aktualizuj po każdym wykonanym zadaniu
-2. **TASK_LIST.md** - sprawdzaj co do zrobienia  
+2. **TASK_LIST.md** - sprawdzaj co do zrobienia (zawiera dokładny plan implementacji każdej fazy!)
 3. **RAILWAY_CONFIG.md** - sprawdzaj konfigurację deploymentu
 4. **ARCHITECTURE.md** - aktualizuj przy zmianach architektury
 
 ### Workflow:
 1. Na początku sesji: przeczytaj PROGRESS_TRACKER.md
-2. Sprawdź TASK_LIST.md co jest do zrobienia
+2. Sprawdź TASK_LIST.md co jest do zrobienia (szczególnie Task 4.2 dla autentykacji!)
 3. Po wykonaniu zadania: natychmiast aktualizuj PROGRESS_TRACKER.md
 4. Przy zmianach architektury: aktualizuj ARCHITECTURE.md
 5. Używaj TodoWrite/TodoRead do śledzenia bieżących zadań
+
+### Strefa czasowa:
+- **ZAWSZE używaj czasu polskiego (Europe/Warsaw, UTC+1/UTC+2)**
+- W PROGRESS_TRACKER.md i innych dokumentach timestamp w formacie: `[YYYY-MM-DD HH:MM PL]`
 
 ## Memory Modes System
 

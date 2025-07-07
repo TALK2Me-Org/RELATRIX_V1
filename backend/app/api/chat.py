@@ -12,7 +12,7 @@ import json
 
 from app.orchestrator.orchestrator import orchestrator
 from app.orchestrator.models import StreamChunk
-from app.core.security import get_current_user
+from app.auth import get_current_user_optional
 from app.database.connection import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -58,7 +58,7 @@ class TransferRequest(BaseModel):
 @router.post("/chat/stream")
 async def stream_chat(
     request: ChatMessage,
-    current_user: Optional[Dict[str, Any]] = Depends(get_current_user)
+    current_user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)
 ):
     """
     Stream chat response using orchestrator
