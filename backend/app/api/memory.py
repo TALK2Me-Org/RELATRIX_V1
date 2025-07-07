@@ -205,6 +205,45 @@ async def debug_memory_status():
     return status
 
 
+@router.post("/debug/test-save")
+async def test_mem0_save():
+    """Test endpoint to save a memory to Mem0"""
+    test_user_id = "test-user-123"
+    test_message = "I love pizza and hate broccoli"
+    
+    result = await orchestrator.memory.add_memory(
+        user_id=test_user_id,
+        message=test_message,
+        metadata={"test": True, "timestamp": "2025-07-07"}
+    )
+    
+    return {
+        "memory_id": result,
+        "saved": bool(result),
+        "user_id": test_user_id,
+        "message": test_message
+    }
+
+
+@router.get("/debug/test-search")
+async def test_mem0_search(query: str = "food preferences"):
+    """Test endpoint to search memories from Mem0"""
+    test_user_id = "test-user-123"
+    
+    results = await orchestrator.memory.search_memories(
+        user_id=test_user_id,
+        query=query,
+        limit=5
+    )
+    
+    return {
+        "query": query,
+        "user_id": test_user_id,
+        "results_count": len(results),
+        "memories": results
+    }
+
+
 @router.get("/modes")
 async def list_memory_modes(current_user: Dict = Depends(get_current_user)):
     """List all available memory modes with descriptions"""
