@@ -164,6 +164,11 @@ RELATRIX_V1/
 ## Changelog
 
 ### 2025-07-07
+- **04:20** - 🔧 Naprawiono wszystkie zależności dla autentykacji:
+  - Dodano brakujące pakiety do requirements.txt: PyJWT>=2.8.0, email-validator>=2.0.0
+  - Naprawiono import get_current_user w chat.py
+  - Zaktualizowano ARCHITECTURE.md z opisem znanych problemów konfiguracji
+  - System gotowy do deploy na Railway
 - **03:30** - 🔧 Naprawiono system autoryzacji - bezpieczna integracja:
   - Rozbudowano istniejący `core/security.py` zamiast tworzyć nowy moduł
   - Dodano Supabase Auth do starego systemu (zachowano kompatybilność)

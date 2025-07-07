@@ -252,6 +252,29 @@ REACT_APP_API_URL    # Backend URL
    - Mem0 niezarejestrowane
    - Tylko Redis cache działa
 
+## Known Issues & Workarounds
+
+### 1. Duplicate Configuration Files
+**Problem**: Istnieją dwa pliki konfiguracyjne:
+- `app/config.py` - używany przez agent_service.py i main.py
+- `app/core/config.py` - używany przez inne moduły
+
+**Rozwiązanie**: Docelowo należy ujednolicić do jednego pliku, ale wymaga to refaktoryzacji importów.
+
+### 2. Authentication Dependencies
+**Problem**: System autentykacji wymaga dodatkowych pakietów:
+- `PyJWT` - dla tokenów JWT (używany w core/security.py)
+- `email-validator` - dla walidacji EmailStr w Pydantic
+
+**Rozwiązanie**: Dodane do requirements.txt. Przy używaniu EmailStr w nowych modułach upewnij się że email-validator jest zainstalowany.
+
+### 3. Supabase JWT Configuration
+**Problem**: Używamy dwóch różnych sekretów JWT:
+- `jwt_secret_key` - dla własnych tokenów
+- `supabase_jwt_secret` - dla weryfikacji tokenów Supabase
+
+**Rozwiązanie**: Upewnij się że oba są poprawnie skonfigurowane w Railway.
+
 ## Future Improvements
 
 1. **Implementacja transfer logic**
