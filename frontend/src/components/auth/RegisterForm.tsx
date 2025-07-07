@@ -54,7 +54,9 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchT
         onSuccess?.();
       }
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Registration failed. Please try again.');
+      console.error('Registration error:', err);
+      console.error('Error response:', err.response);
+      setError(err.response?.data?.detail || err.message || 'Registration failed. Please try again.');
     } finally {
       setLoading(false);
     }
