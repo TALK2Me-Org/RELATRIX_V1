@@ -118,7 +118,7 @@ def require_admin(
 
 
 # Optional authentication dependency
-def get_current_user_optional(
+async def get_current_user_optional(
     credentials: Optional[HTTPAuthorizationCredentials] = Security(security)
 ) -> Optional[Dict[str, Any]]:
     """
@@ -129,7 +129,7 @@ def get_current_user_optional(
         return None
     
     try:
-        return get_current_user(credentials)
+        return await get_current_user(credentials)
     except HTTPException:
         return None
 
