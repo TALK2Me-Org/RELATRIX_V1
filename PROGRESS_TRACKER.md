@@ -1,8 +1,8 @@
 # RELATRIX Progress Tracker
 
-## Ostatnia aktualizacja: 2025-07-07 16:00 CET
+## Ostatnia aktualizacja: 2025-07-07 17:00 CET
 
-## Status projektu: 46% Complete
+## Status projektu: 47% Complete
 
 ## Quick Stats
 - ✅ Fazy ukończone: 3/6 (+ częściowo FAZA 4)
@@ -171,6 +171,11 @@ RELATRIX_V1/
 ## Changelog
 
 ### 2025-07-07
+- **17:00** - 🔧 Naprawiono problemy z wydajnością Mem0:
+  - Dodano async_mode=True do zapisów - nie blokuje już streamu odpowiedzi
+  - Naprawiono retrieval przy nowej sesji - zawsze pobiera memories dla pierwszej wiadomości
+  - Dodano szczegółowe logowanie dla debugowania
+  - User UUID z Supabase (34a6...) jest używany jako user_id w Mem0
 - **16:00** - 🔧 Naprawiono integrację z Mem0 Cloud API:
   - Zmieniono save_conversation_memory() - teraz wysyła rzeczywiste wiadomości zamiast podsumowań
   - Dodano format_messages_for_mem0() do konwersji Message objects na Mem0 format
