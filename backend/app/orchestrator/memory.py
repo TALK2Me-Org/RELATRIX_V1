@@ -180,16 +180,15 @@ class MemoryCoordinator:
             return []
         
         try:
-            # Use Mem0 Cloud API v2 search - simplified to match documentation
+            # Use Mem0 Cloud API search - simplified to match documentation
             results = self.mem0_client.search(
                 query=query,
                 user_id=user_id,
-                limit=limit,
-                version="v2"  # Use v2 API for better context management
+                limit=limit
             )
             
             # Log search results for debugging
-            logger.info(f"Mem0 v2 search for user {user_id} with query '{query}' returned {len(results) if isinstance(results, list) else 0} memories")
+            logger.info(f"Mem0 search for user {user_id} with query '{query}' returned {len(results) if isinstance(results, list) else 0} memories")
             if results and len(results) > 0:
                 logger.debug(f"First memory sample: {results[0]}")
             
