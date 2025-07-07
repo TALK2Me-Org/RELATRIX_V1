@@ -113,7 +113,9 @@ class MemoryCoordinator:
     async def add_memory(
         self, 
         user_id: str, 
-        message: str,
+        messages: List[Dict[str, str]],
+        agent_id: Optional[str] = None,
+        run_id: Optional[str] = None,
         metadata: Dict[str, Any] = None
     ) -> str:
         """Add memory to Mem0 Cloud"""
@@ -125,12 +127,22 @@ class MemoryCoordinator:
             return ""
         
         try:
+            # Prepare parameters for Mem0 API
+            params = {
+                "user_id": user_id,
+                "metadata": metadata or {}
+            }
+            
+            # Add optional parameters
+            if agent_id:
+                params["agent_id"] = agent_id
+            if run_id:
+                params["run_id"] = run_id
+            
             # Use Mem0 Cloud API
-            messages = [{"role": "user", "content": message}]
             result = self.mem0_client.add(
                 messages,
-                user_id=user_id,
-                metadata=metadata or {}
+                **params
             )
             
             # Extract memory ID from Cloud API response
@@ -152,7 +164,8 @@ class MemoryCoordinator:
         self,
         user_id: str,
         query: str,
-        limit: int = 5
+        limit: int = 5,
+        agent_id: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """Search user memories"""
         # Initialize Mem0 if needed
@@ -163,12 +176,19 @@ class MemoryCoordinator:
             return []
         
         try:
+            # Prepare search parameters
+            params = {
+                "query": query,
+                "user_id": user_id,
+                "limit": limit,
+                "output_format": "v1.1"  # Use latest format
+            }
+            
+            if agent_id:
+                params["agent_id"] = agent_id
+            
             # Use Mem0 Cloud API search
-            results = self.mem0_client.search(
-                query=query,
-                user_id=user_id,
-                limit=limit
-            )
+            results = self.mem0_client.search(**params)
             
             # Mem0 returns a list directly
             return results if isinstance(results, list) else []
@@ -198,26 +218,54 @@ class MemoryCoordinator:
         
         # If user_id available and refresh needed, get context
         if session_state.user_id and should_refresh:
+            logger.info(f"Refreshing memory context for user {session_state.user_id}")
             context = await self.retrieve_user_context(session_state)
             
             # Add context as system message if found
-            if context.get("memories") or context.get("profile"):
+            if context.get("memories"):
+                # Format memories for better readability
+                memories_text = "Previous context from user memories:\n"
+                for i, memory in enumerate(context["memories"][:5], 1):  # Limit to top 5
+                    if isinstance(memory, dict):
+                        memory_content = memory.get("memory", memory.get("content", str(memory)))
+                        memories_text += f"{i}. {memory_content}\n"
+                
                 memory_msg = Message(
                     role="system",
-                    content=f"User context: {json.dumps(context)}",
-                    metadata={"type": "memory_context"}
+                    content=memories_text,
+                    metadata={"type": "memory_context", "source": "mem0"}
                 )
                 recent_messages.insert(0, memory_msg)
+                logger.info(f"Added {len(context['memories'])} memories to context")
         
         return recent_messages
+    
+    def format_messages_for_mem0(
+        self, 
+        messages: List[Message], 
+        limit: Optional[int] = None
+    ) -> List[Dict[str, str]]:
+        """Format conversation messages for Mem0 API"""
+        formatted = []
+        
+        # Get messages to format
+        messages_to_format = messages[-limit:] if limit else messages
+        
+        for msg in messages_to_format:
+            formatted.append({
+                "role": msg.role,
+                "content": msg.content
+            })
+        
+        return formatted
     
     async def save_conversation_memory(
         self,
         session_state: SessionState,
-        summary: Optional[str] = None,
+        current_agent: Optional[str] = None,
         force: bool = False
     ):
-        """Save conversation summary to long-term memory based on mode"""
+        """Save conversation to long-term memory based on mode"""
         logger.info(f"save_conversation_memory called for session {session_state.session_id}, user_id: {session_state.user_id}")
         if not session_state.user_id:
             logger.warning(f"No user_id for session {session_state.session_id}, skipping memory save")
@@ -248,37 +296,74 @@ class MemoryCoordinator:
             logger.debug(f"Skipping memory save for session {session_state.session_id}")
             return
         
-        # Create conversation summary if not provided
-        if not summary:
-            # Get key points from conversation
-            key_points = []
-            for transfer in session_state.transfer_history:
-                key_points.append(f"Discussed with {transfer.to_agent}: {transfer.trigger}")
-            
-            summary = f"Conversation on {datetime.now().strftime('%Y-%m-%d')}: " + \
-                     f"Talked with {len(set(t.to_agent for t in session_state.transfer_history)) + 1} agents. " + \
-                     "Topics: " + ", ".join(key_points[:3])
+        # Prepare messages based on mode
+        messages_to_save = []
+        
+        if config.mode == MemoryMode.ALWAYS_FRESH:
+            # For ALWAYS_FRESH: save only the last user-assistant pair
+            if len(session_state.conversation_history) >= 2:
+                # Get last 2 messages (should be user + assistant)
+                messages_to_save = self.format_messages_for_mem0(
+                    session_state.conversation_history,
+                    limit=2
+                )
+            elif session_state.conversation_history:
+                # If only 1 message, save it
+                messages_to_save = self.format_messages_for_mem0(
+                    session_state.conversation_history,
+                    limit=1
+                )
+        else:
+            # For other modes: save batch of messages
+            # CACHE_FIRST: all messages (called at session end)
+            # SMART_TRIGGERS: last N messages (called periodically)
+            if config.mode == MemoryMode.CACHE_FIRST:
+                # Save all messages
+                messages_to_save = self.format_messages_for_mem0(
+                    session_state.conversation_history
+                )
+            else:
+                # Save last 10 messages for SMART_TRIGGERS
+                messages_to_save = self.format_messages_for_mem0(
+                    session_state.conversation_history,
+                    limit=10
+                )
+        
+        if not messages_to_save:
+            logger.warning(f"No messages to save for session {session_state.session_id}")
+            return
+        
+        # Prepare metadata
+        metadata = {
+            "session_id": session_state.session_id,
+            "agents_involved": list(set(t.to_agent for t in session_state.transfer_history)) if session_state.transfer_history else [],
+            "message_count": len(session_state.conversation_history),
+            "memory_mode": config.mode.value,
+            "triggers_fired": metrics.triggers_fired if metrics else {},
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        # Add current agent to agents_involved
+        if current_agent and current_agent not in metadata["agents_involved"]:
+            metadata["agents_involved"].append(current_agent)
         
         # Save to Mem0
         memory_id = await self.add_memory(
-            session_state.user_id,
-            summary,
-            metadata={
-                "session_id": session_state.session_id,
-                "agents_involved": list(set(t.to_agent for t in session_state.transfer_history)),
-                "message_count": len(session_state.conversation_history),
-                "memory_mode": config.mode.value,
-                "triggers_fired": metrics.triggers_fired if metrics else {}
-            }
+            user_id=session_state.user_id,
+            messages=messages_to_save,
+            agent_id=current_agent,
+            run_id=session_state.session_id if config.mode != MemoryMode.ALWAYS_FRESH else None,
+            metadata=metadata
         )
         
         # Add to session memory refs
         if memory_id:
             session_state.memory_refs.append(memory_id)
             await self.save_session_state(session_state)
+            logger.info(f"Saved {len(messages_to_save)} messages to Mem0 for session {session_state.session_id}")
             
         if config.log_all_operations:
-            logger.info(f"[TEST MODE] Saved memory: {memory_id}")
+            logger.info(f"[TEST MODE] Saved memory: {memory_id} with {len(messages_to_save)} messages")
     
     async def get_user_profile(self, user_id: str) -> Dict[str, Any]:
         """Get user profile from memories"""

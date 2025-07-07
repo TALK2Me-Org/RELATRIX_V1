@@ -206,10 +206,10 @@ class Orchestrator:
         config = self.memory.get_session_config(session.session_id)
         if config.mode == MemoryMode.ALWAYS_FRESH:
             # In premium mode, save every message
-            await self.memory.save_conversation_memory(session)
+            await self.memory.save_conversation_memory(session, current_agent=session.current_agent)
         elif len(session.conversation_history) % 10 == 0:
             # In other modes, save every 10 messages
-            await self.memory.save_conversation_memory(session)
+            await self.memory.save_conversation_memory(session, current_agent=session.current_agent)
     
     async def _handle_transfer_suggestion(self, response: str) -> Optional[tuple]:
         """Handle transfer suggestions from agent responses"""

@@ -92,6 +92,14 @@ RELATRIX używa 4 trybów pracy pamięci, które balansują między kosztami i d
 3. **Smart Triggers** - Balans, retrieval przy triggerach
 4. **Test Mode** - Testowanie z pełnym logowaniem
 
+### Status implementacji (2025-07-07 16:00 PL):
+- ✅ Naprawiono save_conversation_memory() - wysyła rzeczywiste wiadomości
+- ✅ ALWAYS_FRESH: zapisuje ostatnią parę (user + assistant) 
+- ✅ CACHE_FIRST: zapisuje całą paczkę na końcu sesji
+- ✅ SMART_TRIGGERS: zapisuje paczki co N wiadomości
+- ✅ Używamy agent_id i run_id zgodnie z dokumentacją Mem0
+- 🔧 Do przetestowania z live Mem0 API
+
 ### API Endpoints
 ```bash
 # Set memory mode
@@ -143,7 +151,7 @@ curl -H "Authorization: Bearer YOUR_TOKEN" \
 
 ### Known Issues:
 - Email verification links odnoszą się do localhost (do naprawy w Supabase Dashboard)
-- Mem0 nie jest aktywne mimo że user_id jest przekazywany
+- Mem0 było nieaktywne - naprawiono 2025-07-07, czeka na testy
 
 ## Common Commands
 

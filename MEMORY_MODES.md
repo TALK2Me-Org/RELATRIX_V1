@@ -1,5 +1,13 @@
 # Memory Modes Documentation
 
+## Status implementacji (2025-07-07 16:00 PL)
+- ✅ Naprawiono save_conversation_memory() - wysyła rzeczywiste wiadomości zamiast podsumowań
+- ✅ ALWAYS_FRESH: zapisuje ostatnią parę wiadomości (user + assistant)
+- ✅ CACHE_FIRST: zapisuje całą paczkę wiadomości na końcu sesji
+- ✅ SMART_TRIGGERS: zapisuje paczki co N wiadomości
+- ✅ Używamy agent_id (taguje assistant messages) i run_id (dla sesyjnych memories)
+- 🔧 Do przetestowania z live Mem0 API
+
 ## Overview
 System pamięci RELATRIX oferuje 4 tryby pracy, które balansują między kosztami, wydajnością i dokładnością kontekstu.
 
@@ -36,10 +44,11 @@ MSG3 → [Mem0 Retrieval] → [Process] → [Mem0 Save]
 **Charakterystyka:**
 - Retrieval przy KAŻDEJ wiadomości
 - Zawsze najnowszy kontekst
-- Save po każdej wiadomości
+- Save po każdej wiadomości (ostatnia para: user + assistant)
 - **Koszt**: ~$0.02 per wiadomość
 - **Latency**: Wysoka (250ms) każda wiadomość
 - **Use case**: Krytyczne rozmowy, terapia kryzysowa
+- **ZMIANA 2025-07-07**: Zapisuje parę wiadomości (user + assistant) zamiast podsumowania
 
 ### Mode C: "Smart Triggers"
 **Filozofia**: Inteligentny balans, retrieval gdy potrzebny
@@ -222,7 +231,11 @@ async def process_message(message: str, session: Session):
 async def end_session(session: Session):
     if session.mode in [CACHE_FIRST, SMART_TRIGGERS]:
         # Save accumulated changes
-        await mem0.save_session_summary(session)
+        # ZMIANA 2025-07-07: Wysyła rzeczywiste wiadomości, nie podsumowanie
+        messages = format_messages_for_mem0(session.conversation_history)
+        await mem0.add(messages, user_id=session.user_id, 
+                      agent_id=session.current_agent, 
+                      run_id=session.id)
     # Mode ALWAYS_FRESH saves continuously
     
     # Cleanup

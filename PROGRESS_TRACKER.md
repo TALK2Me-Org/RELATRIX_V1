@@ -1,19 +1,19 @@
 # RELATRIX Progress Tracker
 
-## Ostatnia aktualizacja: 2025-07-07 05:30 CET
+## Ostatnia aktualizacja: 2025-07-07 16:00 CET
 
-## Status projektu: 44% Complete
+## Status projektu: 46% Complete
 
 ## Quick Stats
 - ✅ Fazy ukończone: 3/6 (+ częściowo FAZA 4)
-- 🚧 W trakcie: User Authentication deployment
+- 🚧 W trakcie: Naprawa Memory Modes i integracji Mem0
 - ❌ Do zrobienia: Admin panel, testy, telemetria, transfer triggers
 - 🚀 Deployment: Railway (działający)
 - 🔐 Nowe: System autoryzacji użytkowników (Supabase) - DZIAŁA!
 - ✅ Autoryzacja: W pełni działająca (Supabase Auth)
 - ✅ Chat: Działa z opcjonalną autoryzacją
-- ⚠️ Mem0: Skonfigurowane ale nie aktywne
-- ❌ Do zrobienia: Admin panel, transfer triggers, pełna integracja Mem0
+- 🔧 Mem0: W trakcie naprawy - zmiana z podsumowań na rzeczywiste wiadomości
+- ❌ Do zrobienia: Admin panel, transfer triggers, UI dla Memory Modes
 
 ## Architektura systemu
 
@@ -171,6 +171,16 @@ RELATRIX_V1/
 ## Changelog
 
 ### 2025-07-07
+- **16:00** - 🔧 Naprawiono integrację z Mem0 Cloud API:
+  - Zmieniono save_conversation_memory() - teraz wysyła rzeczywiste wiadomości zamiast podsumowań
+  - Dodano format_messages_for_mem0() do konwersji Message objects na Mem0 format
+  - Zaktualizowano add_memory() - przyjmuje messages list, agent_id i run_id
+  - Poprawiono get_context_window() - pobiera memories z Mem0 gdy should_refresh_memory
+  - Memory Modes działają zgodnie z założeniami:
+    - ALWAYS_FRESH: wysyła ostatnią parę wiadomości (user + assistant)
+    - CACHE_FIRST: wysyła całą paczkę na końcu sesji
+    - SMART_TRIGGERS: wysyła paczki co N wiadomości
+  - Zaktualizowano dokumentację
 - **05:30** - ✅ AUTORYZACJA W PEŁNI DZIAŁA! Podsumowanie sesji:
   - Chat działa z zalogowanymi użytkownikami
   - Orchestrator tworzy sesje z user_id
@@ -266,11 +276,12 @@ RELATRIX_V1/
    - Logika w transfer.py nie jest zaimplementowana
    - Agenci się nie przełączają automatycznie
 
-2. **🟡 WARNING: Mem0 nieaktywne mimo konfiguracji**
-   - API key jest ustawiony
-   - User_id jest przekazywany
-   - ALE: Brak logów z Mem0 API - może nie jest wywoływane
-   - Do zbadania: memory.py może nie używać Mem0 gdy jest user_id
+2. **🟡 FIXING: Mem0 zapisywało podsumowania zamiast wiadomości**
+   - ✅ Naprawiono: save_conversation_memory() teraz wysyła rzeczywiste wiadomości
+   - ✅ Dodano: format_messages_for_mem0() helper
+   - ✅ Zaktualizowano: add_memory() przyjmuje teraz listę messages
+   - ✅ Poprawiono: get_context_window() pobiera memories z Mem0
+   - 🔧 Do przetestowania: czy user się utworzy w Mem0 przy nowym formacie
 
 3. **🟡 IMPORTANT: Brak admin panelu**
    - Nie można edytować agentów bez SQL
@@ -286,11 +297,11 @@ RELATRIX_V1/
 
 ## Next Steps (Priorytety)
 
-1. **Debug i aktywacja Mem0** [CRITICAL - NEXT]
-   - Sprawdzić dlaczego Mem0 nie jest wywoływane
-   - Debugować memory.py - czy używa Mem0 API
-   - Przetestować zapisywanie i odczyt kontekstu
-   - Upewnić się że Memory Modes działają z Mem0
+1. **Przetestować naprawione Memory Modes** [CRITICAL - NEXT]
+   - Sprawdzić czy Mem0 zapisuje rzeczywiste wiadomości
+   - Zweryfikować czy user się tworzy w Mem0
+   - Przetestować retrieval z Mem0 w różnych trybach
+   - Upewnić się że każdy tryb działa zgodnie z założeniami
 
 2. **UI dla Memory Modes** [HIGH]
    - Przełącznik trybów w admin panelu
