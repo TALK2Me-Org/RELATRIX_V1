@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Depends, status
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, Dict, Any
 
-from app.auth import auth_service, get_current_user, get_current_user_optional
+from app.core.security import auth_service, get_current_user, get_current_user_optional
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
