@@ -40,11 +40,11 @@ class MemoryCoordinator:
         self._using_mock = False
         
         # Memory mode configuration
-        self.global_config = DEFAULT_CONFIGS["balanced"]
+        self.global_config = DEFAULT_CONFIGS["premium"]
         self.session_configs: Dict[str, MemoryConfig] = {}
         self.session_metrics: Dict[str, MemoryMetrics] = {}
         
-        logger.info("Memory Coordinator initialized with balanced mode")
+        logger.info("Memory Coordinator initialized with premium mode")
     
     async def initialize(self):
         """Initialize Redis connection"""
@@ -218,7 +218,9 @@ class MemoryCoordinator:
         force: bool = False
     ):
         """Save conversation summary to long-term memory based on mode"""
+        logger.info(f"save_conversation_memory called for session {session_state.session_id}, user_id: {session_state.user_id}")
         if not session_state.user_id:
+            logger.warning(f"No user_id for session {session_state.session_id}, skipping memory save")
             return
         
         config = self.get_session_config(session_state.session_id)

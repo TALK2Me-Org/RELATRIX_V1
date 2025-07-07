@@ -16,6 +16,7 @@ from .models import (
     SessionState, Message, StreamChunk, 
     TransferReason, OrchestratorStatus
 )
+from .memory_modes import MemoryMode
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -104,6 +105,7 @@ class Orchestrator:
         Process user message and stream response
         Main entry point for chat interactions
         """
+        logger.info(f"process_message: session_id={session_id}, user_id={user_id}")
         # Get or create session
         session = self.active_sessions.get(session_id)
         if not session:
@@ -200,8 +202,13 @@ class Orchestrator:
         # Save session state
         await self.memory.save_session_state(session)
         
-        # Save to long-term memory if significant
-        if len(session.conversation_history) % 10 == 0:
+        # Save to long-term memory based on mode
+        config = self.memory.get_session_config(session.session_id)
+        if config.mode == MemoryMode.ALWAYS_FRESH:
+            # In premium mode, save every message
+            await self.memory.save_conversation_memory(session)
+        elif len(session.conversation_history) % 10 == 0:
+            # In other modes, save every 10 messages
             await self.memory.save_conversation_memory(session)
     
     async def _handle_transfer_suggestion(self, response: str) -> Optional[tuple]:
