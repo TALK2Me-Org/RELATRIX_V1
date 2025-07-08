@@ -1,6 +1,6 @@
 // API Service Layer
 import axios from 'axios';
-import { Agent, Message, StreamChunk } from '../types/chat';
+import { Agent, StreamChunk } from '../types/chat';
 
 // Use environment variable or default to production
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://relatrix-backend.up.railway.app';
