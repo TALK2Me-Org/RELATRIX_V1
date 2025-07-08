@@ -41,14 +41,12 @@ from .api import agents_router
 from .api.chat import router as chat_router
 from .api.admin_migration import router as admin_migration_router
 from .api.admin_migration_v2 import router as admin_migration_v2_router
-from .api.test_memory import router as test_memory_router
 from .api.auth_endpoints import router as auth_router
 
 app.include_router(agents_router)
 app.include_router(chat_router, prefix="/api", tags=["chat"])
 app.include_router(admin_migration_router, prefix="/api/admin", tags=["admin"])
 app.include_router(admin_migration_v2_router, prefix="/api/admin", tags=["admin"])
-app.include_router(test_memory_router, prefix="/api/test", tags=["testing"])
 app.include_router(auth_router, prefix="/api", tags=["authentication"])
 
 # Request/Response models
