@@ -1,0 +1,9 @@
+# Nixpacks configuration for faster builds
+[phases.install]
+cmds = ["npm ci --production=false"]
+
+[phases.build]
+cmds = ["npm run build"]
+
+[start]
+cmd = "npx serve -s build -l $PORT"
