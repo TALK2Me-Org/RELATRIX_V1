@@ -21,6 +21,35 @@ logger = logging.getLogger(__name__)
 # Router
 chat_router = APIRouter()
 
+# Test endpoint for agent switching
+@chat_router.get("/test-switch")
+async def test_agent_switch():
+    """Test endpoint to verify agent switching logic"""
+    
+    # Test JSON detection
+    test_response = 'Hello, I understand you need help. {"agent": "emotional_vomit"} Let me help you.'
+    detected = extract_agent_slug(test_response)
+    cleaned = remove_agent_json(test_response)
+    
+    # Test fallback
+    fallback_test = await should_switch_agent(
+        "I'm feeling very angry and need to vent",
+        "misunderstanding_protector"
+    )
+    
+    return {
+        "json_detection": {
+            "test_response": test_response,
+            "detected_agent": detected,
+            "cleaned_response": cleaned
+        },
+        "fallback_test": {
+            "message": "I'm feeling very angry and need to vent",
+            "current_agent": "misunderstanding_protector",
+            "suggested_agent": fallback_test
+        }
+    }
+
 # OpenAI client
 openai = AsyncOpenAI(api_key=settings.openai_api_key)
 
@@ -86,6 +115,7 @@ async def stream_chat(
             
             # Get user ID (use session ID if not authenticated)
             user_id = user["id"] if user else "anonymous"
+            logger.info(f"[CHAT] Processing message for user: {user_id}, agent: {agent_slug}")
             
             # Search memories
             memories = []
@@ -126,6 +156,8 @@ async def stream_chat(
                     # Check for agent switch
                     if not new_agent:
                         new_agent = extract_agent_slug(full_response)
+                        if new_agent:
+                            logger.info(f"[AGENT_SWITCH] JSON detection found: {new_agent}")
                     
                     # Send chunk
                     yield f"data: {json.dumps({'chunk': content})}\n\n"
@@ -144,9 +176,13 @@ async def stream_chat(
             
             # Check fallback if no agent switch detected
             if not new_agent:
+                logger.info(f"[AGENT_SWITCH] No JSON detected, trying fallback GPT-3.5")
                 new_agent = await should_switch_agent(message, agent_slug)
+                if new_agent:
+                    logger.info(f"[AGENT_SWITCH] Fallback suggested: {new_agent}")
             
             # Send switch signal
+            logger.info(f"[AGENT_SWITCH] Final decision: {new_agent or 'none'}")
             yield f"data: {json.dumps({'switch': new_agent or 'none'})}\n\n"
             
             # End stream
