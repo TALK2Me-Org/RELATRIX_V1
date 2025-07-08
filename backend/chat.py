@@ -116,6 +116,11 @@ async def stream_chat(
             # Get user ID (use session ID if not authenticated)
             user_id = user["id"] if user else "anonymous"
             logger.info(f"[CHAT] Processing message for user: {user_id}, agent: {agent_slug}")
+            logger.debug(f"[CHAT] User object: {user}")
+            
+            # Log why user might be anonymous
+            if user_id == "anonymous":
+                logger.warning("[CHAT] User is anonymous - no memory will be saved/retrieved")
             
             # Search memories
             memories = []
