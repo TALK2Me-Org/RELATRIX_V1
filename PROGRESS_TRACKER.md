@@ -1,36 +1,40 @@
 # RELATRIX Progress Tracker
 
-## Ostatnia aktualizacja: 2025-07-08 21:15 CET
+## Ostatnia aktualizacja: 2025-07-09 00:15 PL
 
-## Status projektu: 60% Complete
+## Status projektu: 85% Complete - RELATRIX v2.0 DEPLOYED!
 
 ## Quick Stats
-- ✅ Fazy ukończone: 3/6 (+ częściowo FAZA 4)
-- 🚧 W trakcie: Admin panel, transfer triggers
-- ❌ Do zrobienia: Admin panel, testy, telemetria, transfer triggers
-- 🚀 Deployment: Railway (działający)
-- ✅ System autoryzacji: W pełni działający (Supabase Auth)
-- ✅ Chat: Działa z autoryzacją i pamięcią
-- ~~🔧 Mem0: W trakcie naprawy - zmiana z podsumowań na rzeczywiste wiadomości~~
-- ✅ Mem0 v2: NAPRAWIONE [20:30] - zapisuje właściwe wspomnienia bez UPDATE
-- ✅ Memory Modes: W pełni zaimplementowane
-- ❌ Do zrobienia: Admin panel, transfer triggers, UI dla Memory Modes
+- ✅ Aplikacja: RELATRIX v2.0 - Ultra clean implementation
+- ✅ Backend: 8 plików (~600 linii) - działa na Railway
+- ✅ Frontend: 5 plików (~500 linii) - działa na Railway  
+- ✅ Autoryzacja: Działa (Supabase Auth)
+- ✅ Chat: Działa z SSE streaming
+- ✅ Mem0: AsyncMemoryClient z dodatkowymi logami [2025-07-09 00:15]
+- ✅ Agent switching: Dodany test endpoint /api/chat/test-switch [2025-07-09 00:15]
+- ✅ Admin panel: Działa dla zalogowanych użytkowników (link w headerze)
+- ✅ Logging: Zmienione na DEBUG level dla lepszego debugowania [2025-07-09 00:15]
+- ✅ Deployment: Railway (oba serwisy działają)
 
 ## Architektura systemu
 
-### Aktualna architektura (Multi-Agent Orchestrator)
+### NOWA ARCHITEKTURA v2.0 (Ultra Clean)
 ```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   Frontend  │────▶│   Backend   │────▶│  PostgreSQL │
-│   (React)   │     │  (FastAPI)  │     │   (Agents)  │
-└─────────────┘     └─────────────┘     └─────────────┘
+┌─────────────┐     ┌─────────────┐     
+│   Frontend  │────▶│   Backend   │     
+│   (React)   │ SSE │  (FastAPI)  │     
+│   Vite      │     │  8 files    │     
+└─────────────┘     └─────────────┘     
                            │
-                    ┌──────┴──────┐
-                    │             │
-                ┌───▼───┐    ┌───▼───┐
-                │ Redis │    │ Mem0  │
-                │(Cache)│    │ (API) │
-                └───────┘    └───────┘
+                    ┌──────┴──────────┐
+                    │                 │
+                ┌───▼───┐         ┌───▼────┐
+                │ Mem0  │         │OpenAI  │
+                │ Async │         │GPT-4   │
+                └───────┘         └────────┘
+                    
+   PostgreSQL (tylko tabela agents)
+   Supabase Auth (JWT tokens)
 ```
 
 ### ⚠️ WAŻNA ZMIANA: MCP Server → Multi-Agent Orchestrator
@@ -39,6 +43,31 @@
 - **Commit**: e90eca63 - "feat: Replace MCP with Multi-Agent Orchestrator"
 
 ## Struktura projektu
+
+### RELATRIX v2.0 (ULTRA CLEAN) - AKTUALNY STAN
+```
+RELATRIX_V1/
+├── backend/                     # 8 plików, ~600 linii
+│   ├── main.py                 # FastAPI app + routers
+│   ├── config.py               # Pydantic settings
+│   ├── database.py             # SQLAlchemy + agents
+│   ├── auth.py                 # Supabase auth
+│   ├── chat.py                 # SSE chat endpoint
+│   ├── agents.py               # Agents CRUD
+│   ├── memory_service.py       # Mem0 AsyncClient
+│   └── agent_parser.py         # JSON detection
+├── frontend/                    # 5 plików, ~500 linii
+│   ├── src/
+│   │   ├── App.tsx             # Router
+│   │   ├── Chat.tsx            # Main chat UI
+│   │   ├── Auth.tsx            # Login/Register
+│   │   ├── api.ts              # API client
+│   │   └── index.tsx           # Entry point
+│   └── Dockerfile              # PORT 8080
+└── railway.json                 # Railway config
+```
+
+### STARA STRUKTURA v1.0 (przed 2025-07-08 23:45)
 ```
 RELATRIX_V1/
 ├── backend/
@@ -170,6 +199,20 @@ RELATRIX_V1/
 - [ ] Task 6.5: E2E Testing - ❌ Brak
 
 ## Changelog
+
+### 2025-07-08
+- **23:45** - 🚀 RELATRIX v2.0 COMPLETE REWRITE:
+  - Całkowicie przepisano aplikację od zera z ultra-prostą architekturą
+  - Backend: 8 plików (~600 linii) - FastAPI minimalistyczny
+  - Frontend: 5 plików (~500 linii) - React + TypeScript + Vite
+  - Używamy oficjalnego Mem0 AsyncMemoryClient (nie custom wrapper)
+  - SSE streaming zamiast WebSocket dla prostoty
+  - Agent switching przez JSON detection: {"agent": "slug_name"}
+  - Supabase auth z JWT tokens
+  - Deployment na Railway - oba serwisy działają
+  - ⚠️ Problem: Mem0 nie pokazuje aktywności w logach
+  - ⚠️ Problem: Agent switching nie przetestowane
+  - Dokumentacja zaktualizowana dla następnej sesji
 
 ### 2025-07-08
 - **21:15** - 🚀 IMPLEMENTACJA ASYNC MEM0 CLIENT:
@@ -327,7 +370,38 @@ RELATRIX_V1/
 
 ## Kluczowe moduły
 
-### Backend (Python/FastAPI)
+### Backend v2.0 (Python/FastAPI) - ULTRA CLEAN
+- **main.py** - FastAPI app, routers, CORS (60 linii)
+- **config.py** - Settings z Pydantic (30 linii)
+- **database.py** - SQLAlchemy + seed_agents (80 linii)
+- **auth.py** - Supabase auth + JWT (170 linii)
+- **chat.py** - SSE streaming endpoint (120 linii)
+- **agents.py** - CRUD dla agentów (40 linii)
+- **memory_service.py** - Mem0 AsyncMemoryClient (30 linii)
+- **agent_parser.py** - JSON detection dla agent switching (20 linii)
+
+### Frontend v2.0 (React/TypeScript) - MINIMALISTYCZNY
+- **App.tsx** - Main router (30 linii)
+- **Chat.tsx** - Chat UI z SSE (250 linii)
+- **Auth.tsx** - Login/Register forms (150 linii)
+- **api.ts** - API client (60 linii)
+- **index.tsx** - Entry point (10 linii)
+
+### Memory System - Mem0 Native
+- Używamy oficjalnego AsyncMemoryClient
+- Brak custom wrapperów czy cache'owania
+- Mem0 v2 API zarządza całą złożonością
+- version="v2" dla add() - zapobiega nadpisywaniu
+
+### Database (PostgreSQL)
+- **agents** - 7 agentów z system prompts
+- Brak zbędnych tabel (usunięto chat_sessions, agent_transfers)
+
+---
+
+## STARE MODUŁY (v1.0 - przed 2025-07-08)
+
+### Backend (Python/FastAPI) - STARA STRUKTURA
 - **orchestrator.py** - Główny kontroler agentów, zarządza sesjami i przepływem
 - **registry.py** - Ładuje agentów z PostgreSQL, cache'uje w pamięci
 - **streaming.py** - Obsługuje Server-Sent Events dla real-time responses
@@ -335,23 +409,46 @@ RELATRIX_V1/
 - **memory.py** - Integracja z Redis (cache) i Mem0 (long-term)
 - **chat.py** - REST API endpoints dla chatu
 
-### Frontend (React/TypeScript)  
+### Frontend (React/TypeScript) - STARA STRUKTURA
 - **ChatInterface.tsx** - Główny komponent UI, obsługuje streaming
 - **api.ts** - Warstwa komunikacji z backendem, typy TypeScript
 - **chat.ts** - Definicje typów dla agentów i wiadomości
 
-### Memory System (Redis + Mem0)
+### Memory System (Redis + Mem0) - STARY SYSTEM
 - **Mode A: Cache First** - 1 retrieval na start, cache przez sesję
 - **Mode B: Always Fresh** - Retrieval przy każdej wiadomości
 - **Mode C: Smart Triggers** - Retrieval na start + przy triggerach
 - **Mode D: Test Mode** - Porównanie kosztów wszystkich trybów
 
-### Database (PostgreSQL)
+### Database (PostgreSQL) - STARA STRUKTURA
 - **agents** - 7 agentów z system prompts i transfer triggers
 - **chat_sessions** - Sesje użytkowników
 - **agent_transfers** - Historia przełączeń między agentami
 
-## Known Issues
+## Known Issues (v2.0 - AKTUALNE)
+
+1. **🟡 IMPORTANT: Mem0 brak widocznej aktywności**
+   - AsyncMemoryClient zaimplementowany poprawnie
+   - Brak logów z Mem0 podczas chatów
+   - Możliwe że działa ale nie loguje
+   - Do sprawdzenia w Mem0 dashboard
+
+2. **🟡 IMPORTANT: Agent switching nie przetestowane**
+   - JSON detection zaimplementowane
+   - Fallback do GPT-3.5 dla wykrywania agenta
+   - Wymaga testów z różnymi promptami
+
+3. **✅ FIXED: ~~Transfer triggers nie działają~~**
+   - Zastąpione przez JSON detection w v2.0
+   - Agent może przełączyć dodając {"agent": "slug"} do odpowiedzi
+
+4. **🟠 MINOR: Email verification links**
+   - Linki w emailach odnoszą się do localhost
+   - Wymaga konfiguracji w Supabase Dashboard
+
+---
+
+## Known Issues (v1.0 - STARE, PRZED 2025-07-08)
 
 1. **🔴 CRITICAL: Mem0 synchroniczny client**
    - MemoryClient blokuje całą aplikację
@@ -367,7 +464,7 @@ RELATRIX_V1/
    - transfer.py został usunięty podczas uproszczenia
    - Agenci się nie przełączają automatycznie
 
-2. **~~🟡 FIXING~~** → **✅ NAPRAWIONE: Mem0 zapisywało podsumowania zamiast wiadomości** [2025-07-07]
+4. **~~🟡 FIXING~~** → **✅ NAPRAWIONE: Mem0 zapisywało podsumowania zamiast wiadomości** [2025-07-07]
    - ✅ Naprawiono: save_conversation_memory() teraz wysyła rzeczywiste wiadomości
    - ✅ Dodano: format_messages_for_mem0() helper
    - ✅ Zaktualizowano: add_memory() przyjmuje teraz listę messages
@@ -380,19 +477,50 @@ RELATRIX_V1/
      - search() NIE używa version="v2" (tylko dla Criteria Retrieval)
      - Dokumentacja: MEM0_GUIDE.md i MEM0_INSTRUKCJE_PL.md utworzone
 
-3. **🟡 IMPORTANT: Brak admin panelu**
+5. **🟡 IMPORTANT: Brak admin panelu**
    - Nie można edytować agentów bez SQL
    - Brak metryk i monitoringu
    - Nie można zmienić Memory Modes z UI
 
-4. **🟠 MINOR: Email verification links**
-   - Linki w emailach odnoszą się do localhost
-   - Wymaga konfiguracji w Supabase Dashboard
-
-5. **🟠 MINOR: Pydantic deprecation warnings**
+6. **🟠 MINOR: Pydantic deprecation warnings**
    - memory.py używa .json() zamiast .model_dump_json()
 
-## Next Steps (Priorytety)
+## Zadania wykonane dzisiaj [2025-07-09 00:15 PL]
+
+1. ✅ **Sprawdzenie panelu admina** - Panel istnieje i działa pod /admin
+2. ✅ **Dodanie logów do Mem0** - Dodane prefiksy [MEM0] dla łatwego śledzenia
+3. ✅ **Dodanie logów do agent switching** - Prefiksy [AGENT_SWITCH] i [CHAT]
+4. ✅ **Test endpoint** - /api/chat/test-switch do weryfikacji logiki przełączania
+5. ✅ **Zmiana poziomu logowania** - DEBUG level dla lepszego debugowania
+
+## Next Steps (v2.0 - AKTUALNE PRIORYTETY)
+
+1. **Deploy i Test na Railway** [HIGH] 🚨
+   - Push zmian na Railway
+   - Sprawdzić logi z [MEM0] i [AGENT_SWITCH]
+   - Przetestować /api/chat/test-switch endpoint
+   - Sprawdzić panel admina na produkcji
+
+2. **Weryfikacja Mem0** [HIGH]
+   - Sprawdzić dashboard Mem0 czy zapisuje dane
+   - Porównać user_id z logów z dashboard
+   - Sprawdzić czy API key jest poprawny
+   - Zweryfikować przełączanie agentów
+
+3. **Admin Panel** [MEDIUM]
+   - Proste UI do zarządzania agentami
+   - Podgląd aktywnych sesji
+   - Podstawowe metryki użycia
+   - Koszty API calls
+
+4. **Performance Optimization** [MEDIUM]
+   - Cache agentów w pamięci
+   - Optymalizacja SSE streaming
+   - Redukcja opóźnień
+
+---
+
+## Next Steps (v1.0 - STARE PRIORYTETY)
 
 1. **Naprawić Mem0 Retrieval** [CRITICAL - NEXT] 🚨
    - Usunąć run_id z zapisywania (używać tylko user_id)

@@ -88,38 +88,39 @@ railway run -s backend env
 - **ZAWSZE używaj czasu polskiego (Europe/Warsaw, UTC+1/UTC+2)**
 - W PROGRESS_TRACKER.md i innych dokumentach timestamp w formacie: `[YYYY-MM-DD HH:MM PL]`
 
-## Memory System - "Mem0 Native" (Uproszczone 2025-07-08)
+## Memory System - RELATRIX v2.0 (2025-07-08)
 
-### Filozofia
-Mem0 v2 sam zarządza całą złożonością - my tylko przekazujemy dane.
+### Architektura
+- Używamy oficjalnego Mem0 AsyncMemoryClient
+- Brak custom wrapperów - bezpośrednie API calls
+- Cała logika w `memory_service.py` (30 linii!)
 
-### Jak to działa:
+### Implementacja:
 ```python
-# Przy każdej wiadomości:
-1. Jeśli user zalogowany - pobierz wspomnienia:
-   memories = memory.search(user_message, user_id)
+# memory_service.py
+from mem0 import AsyncMemoryClient
 
-2. Wyślij do OpenAI minimalny kontekst:
-   - System prompt agenta
-   - Wspomnienia z Mem0 (jeśli są)
-   - Aktualna wiadomość użytkownika
+client = AsyncMemoryClient(api_key=settings.mem0_api_key)
 
-3. Po odpowiedzi zapisz do Mem0:
-   memory.add([user_msg, assistant_msg], user_id)
+async def search_memories(query: str, user_id: str):
+    return await client.search(query=query, user_id=user_id)
+
+async def add_memory(messages: list, user_id: str):
+    return await client.add(messages=messages, user_id=user_id, version="v2")
 ```
 
-### Co się zmieniło (2025-07-08):
-- ✅ Usunięto całą logikę Memory Modes
-- ✅ memory.py: 650 → 201 linii (-70%)
-- ✅ Brak cache'owania kontekstu w Redis
-- ✅ Mem0 v2 automatycznie zarządza kontekstem
-- ✅ Niższe koszty - wysyłamy minimum tokenów
+### Co się zmieniło w v2.0 (2025-07-08 23:45):
+- ✅ Całkowicie przepisane od zera
+- ✅ Usunięto ~50 plików starej architektury
+- ✅ Backend: 8 plików zamiast 30+
+- ✅ Frontend: 5 plików zamiast 20+
+- ✅ Brak Redis, brak cache'owania
+- ✅ Agent switching przez JSON detection
 
-### Status Mem0:
-- ✅ Używamy Mem0 v2 API (version="v2")
-- ✅ Async mode włączony (nie blokuje odpowiedzi)
-- ✅ Każda para wiadomości zapisywana osobno
-- ✅ Mem0 sam decyduje co jest ważne
+### Status:
+- ✅ AsyncMemoryClient zaimplementowany
+- ⚠️ Brak logów z Mem0 (do debugowania)
+- ⚠️ Agent switching nie przetestowane
 
 ## System Autoryzacji (DZIAŁA!)
 
@@ -148,25 +149,53 @@ curl -H "Authorization: Bearer YOUR_TOKEN" \
 
 ### Known Issues:
 - Email verification links odnoszą się do localhost (do naprawy w Supabase Dashboard)
-- 🔴 Mem0 v1 aktualizuje oryginalne wspomnienia - konieczna migracja do v2 API!
-- Rozwiązanie: Dodać version="v2" do wszystkich wywołań Mem0
+- ⚠️ Mem0 nie pokazuje aktywności w logach (do debugowania)
+- ⚠️ Agent switching nie przetestowane (do weryfikacji)
 
-## Aktualny Problem do Rozwiązania (2025-07-08)
+## RELATRIX v2.0 - Status (2025-07-08 23:45)
 
-### Mem0 Async Integration
-- **Problem 1**: Mem0 client jest synchroniczny - blokuje całą aplikację
-- **Problem 2**: Mem0 add() zwraca `{'results': []}` - nic nie zapisuje
-- **Problem 3**: Chat jest wolny przez synchroniczne wywołania Mem0
-- **Rozwiązanie**: Implementacja AsyncMem0Client używając httpx
-- **Lokalizacja**: backend/app/orchestrator/orchestrator.py
-- **Szczegóły**: Zobacz MEM0_ASYNC_PLAN.md
+### 🎆 COMPLETE REWRITE - Ultra Clean Architecture!
+- **Backend**: 8 plików (~600 linii) - FastAPI minimalistyczny
+- **Frontend**: 5 plików (~500 linii) - React + TypeScript + Vite  
+- **Deployment**: Działa na Railway!
+- **Chat**: Działa z SSE streaming
+- **Auth**: Działa (Supabase)
 
-### Stan po uproszczeniu (2025-07-08):
-- Usunięto ~700 linii kodu
-- Bezpośrednie użycie Mem0 i OpenAI API
-- Brak warstw abstrakcji
-- memory.py i transfer.py usunięte
-- orchestrator.py: 384 → 164 linii
+### Aktualne Problemy do Rozwiązania (2025-07-09)
+
+#### 1. Mem0 Integration Debug
+- **Problem**: Brak widocznej aktywności Mem0 w logach
+- **Możliwe przyczyny**:
+  - Mem0 działa ale nie loguje
+  - User ID nie jest poprawnie przekazywany
+  - API key problem
+- **Do sprawdzenia**: Mem0 dashboard, logi, user_id flow
+
+#### 2. Agent Switching Testing  
+- **Problem**: Nie przetestowane czy działa
+- **Implementacja**: JSON detection `{"agent": "slug_name"}`
+- **Fallback**: GPT-3.5 dla wykrywania agenta
+- **Do zrobienia**: Testy z różnymi promptami
+
+### Architektura v2.0
+```
+backend/
+├── main.py              # FastAPI app + routers
+├── config.py            # Pydantic settings  
+├── database.py          # SQLAlchemy + agents
+├── auth.py              # Supabase auth
+├── chat.py              # SSE streaming endpoint
+├── agents.py            # Agents CRUD
+├── memory_service.py    # Mem0 AsyncClient
+└── agent_parser.py      # JSON detection
+
+frontend/src/
+├── App.tsx              # Router
+├── Chat.tsx             # Main chat UI
+├── Auth.tsx             # Login/Register
+├── api.ts               # API client
+└── index.tsx            # Entry point
+```
 
 ## Common Commands
 

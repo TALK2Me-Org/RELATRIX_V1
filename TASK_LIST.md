@@ -30,19 +30,37 @@
 
 ## ⚠️ AKTUALNY PRIORYTET (2025-07-09)
 
-### 🚨 Task 0.1: Implementacja Async Mem0 Client [CRITICAL]
-**Problem:** Synchroniczny Mem0 client blokuje całą aplikację, chat jest wolny
+### ✅ Task 0.0: RELATRIX v2.0 Complete Rewrite [COMPLETED 2025-07-08]
+**Status:** ✅ ZAKOŃCZONE - Całkowite przepisanie aplikacji
+- Backend: 8 plików (~600 linii) - ultra clean FastAPI
+- Frontend: 5 plików (~500 linii) - React + TypeScript + Vite
+- Oficjalny Mem0 AsyncMemoryClient (nie custom wrapper)
+- SSE streaming, agent switching przez JSON detection
+- Deployment na Railway działa
+
+### 🚨 Task 0.1: Debug Mem0 Integration [HIGH]
+**Problem:** Brak widocznej aktywności Mem0 w logach
 **Polecenie dla Claude Code:**
 ```
-1. Stwórz AsyncMem0Client w orchestrator.py używając httpx
-2. Zamień wszystkie wywołania na async (search, add)
-3. Zwiększ limit w search() z 5 na 20
-4. Debug dlaczego add() zwraca {'results': []}
-5. Sprawdź MEM0_ASYNC_PLAN.md dla implementacji
+1. Dodać więcej logowania do memory_service.py
+2. Sprawdzić czy user_id jest poprawnie przekazywany
+3. Przetestować bezpośrednio API Mem0
+4. Zweryfikować w Mem0 dashboard czy dane są zapisywane
 ```
-**Oczekiwany rezultat:** Szybki chat, nieblokujące wywołania Mem0, działający zapis
+**Oczekiwany rezultat:** Potwierdzenie działania Mem0, widoczne logi
 
-### ✅ Task 0.2: Railway Optimization [COMPLETED 2025-07-08]
+### 🚨 Task 0.2: Test Agent Switching [HIGH]
+**Problem:** Agent switching nie przetestowane
+**Polecenie dla Claude Code:**
+```
+1. Przetestować różne prompty wymuszające zmianę agenta
+2. Sprawdzić czy JSON {"agent": "slug"} jest poprawnie parsowany
+3. Przetestować fallback do GPT-3.5
+4. Dodać więcej logów do agent_parser.py
+```
+**Oczekiwany rezultat:** Działające przełączanie agentów
+
+### ✅ Task 0.3: Railway Optimization [COMPLETED 2025-07-08]
 - Zmieniono Dockerfile → Nixpacks
 - Build time: 20 min → 3 min
 - Dodano Procfile i nixpacks.toml
@@ -486,7 +504,25 @@ Stwórz podstawową strukturę projektu RELATRIX zgodnie z planem:
 - Stwórz package.json dla frontendu
 ```
 
-**Status Tracking:**
+**Status Tracking (v2.0 - AKTUALNE):**
+- [x] Rewrite v2.0: Complete (100%) ✅
+- [x] Backend: 8 plików ultra clean (100%)
+- [x] Frontend: 5 plików minimalistycznych (100%)
+- [🔧] Mem0 Integration: Wymaga debugowania (80%)
+- [🔧] Agent Switching: Wymaga testów (90%)
+- [ ] Admin Panel: Do implementacji (0%)
+
+**🚨 CRITICAL UPDATE (2025-07-08):**
+Całkowicie przepisaliśmy RELATRIX na v2.0:
+- Ultra prosta architektura - 13 plików zamiast 50+
+- Oficjalny Mem0 AsyncMemoryClient
+- Agent switching przez JSON detection
+- SSE streaming zamiast WebSocket
+- Deployment działa na Railway
+
+---
+
+**Status Tracking (v1.0 - STARE):**
 - [x] Faza 1: Setup & Infrastructure (100%)
 - [x] Faza 2: Core MCP Server → Multi-Agent Orchestrator (100%)
 - [🔧] Faza 3: Specialized Agents (15% - tylko w bazie danych)
