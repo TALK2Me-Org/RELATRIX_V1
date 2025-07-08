@@ -44,8 +44,16 @@ class AgentResponse(AgentBase):
 @agents_router.get("/", response_model=List[AgentResponse])
 async def get_agents(db: Session = Depends(get_db)):
     """Get all active agents"""
-    agents = db.query(Agent).filter(Agent.is_active == True).all()
-    return agents
+    logger.info("[AGENTS] GET /api/agents/ called")
+    try:
+        agents = db.query(Agent).filter(Agent.is_active == True).all()
+        logger.info(f"[AGENTS] Found {len(agents)} active agents")
+        for agent in agents:
+            logger.debug(f"[AGENTS] Agent: {agent.slug} (ID: {agent.id})")
+        return agents
+    except Exception as e:
+        logger.error(f"[AGENTS] Error fetching agents: {e}")
+        raise
 
 
 @agents_router.get("/{slug}", response_model=AgentResponse)
@@ -110,4 +118,47 @@ async def seed_default_agents(db: Session = Depends(get_db)):
         return {"message": "Default agents seeded successfully"}
     except Exception as e:
         logger.error(f"Seed error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@agents_router.delete("/cleanup-duplicates")
+async def cleanup_duplicate_agents(
+    user: dict = Depends(require_user),
+    db: Session = Depends(get_db)
+):
+    """Remove duplicate agents, keeping only one of each slug"""
+    logger.info(f"[AGENTS] Cleanup requested by {user['email']}")
+    
+    try:
+        # Get all agent slugs
+        from sqlalchemy import func
+        duplicates = db.query(
+            Agent.slug, 
+            func.count(Agent.slug).label('count')
+        ).group_by(Agent.slug).having(func.count(Agent.slug) > 1).all()
+        
+        removed_count = 0
+        for slug, count in duplicates:
+            # Get all agents with this slug
+            agents = db.query(Agent).filter(Agent.slug == slug).order_by(Agent.id).all()
+            
+            # Keep the first one, delete the rest
+            for agent in agents[1:]:
+                logger.info(f"[AGENTS] Removing duplicate: {agent.slug} (ID: {agent.id})")
+                db.delete(agent)
+                removed_count += 1
+        
+        db.commit()
+        
+        # Log final state
+        total_agents = db.query(Agent).count()
+        logger.info(f"[AGENTS] Cleanup complete. Removed {removed_count} duplicates. Total agents: {total_agents}")
+        
+        return {
+            "message": f"Removed {removed_count} duplicate agents",
+            "total_agents": total_agents
+        }
+    except Exception as e:
+        logger.error(f"[AGENTS] Cleanup error: {e}")
+        db.rollback()
         raise HTTPException(status_code=500, detail=str(e))

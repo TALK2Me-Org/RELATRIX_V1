@@ -25,13 +25,16 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
+        "http://localhost:5173",  # Vite default port
         "http://localhost:8080",
         "https://relatrix-frontend.up.railway.app",
-        "https://relatrix-backend.up.railway.app"
+        "https://relatrix-backend.up.railway.app",
+        "https://*.up.railway.app"  # Allow all Railway preview deployments
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"]
 )
 
 # Health check endpoint
