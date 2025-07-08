@@ -153,12 +153,20 @@ curl -H "Authorization: Bearer YOUR_TOKEN" \
 
 ## Aktualny Problem do Rozwiązania (2025-07-08)
 
-### Mem0 Retrieval Issue
-- **Problem**: Nowe wspomnienia nie pojawiają się w kontekście
-- **Przykład**: "Lubię lody waniliowe" nie pojawia się przy kolejnych zapytaniach
-- **Hipoteza**: run_id izoluje wspomnienia per sesja
-- **Rozwiązanie**: Użyj tylko user_id (bez run_id) dla cross-session memory
-- **Szczegóły**: Zobacz MEM0_DEBUG_SESSION.md
+### Mem0 Async Integration
+- **Problem 1**: Mem0 client jest synchroniczny - blokuje całą aplikację
+- **Problem 2**: Mem0 add() zwraca `{'results': []}` - nic nie zapisuje
+- **Problem 3**: Chat jest wolny przez synchroniczne wywołania Mem0
+- **Rozwiązanie**: Implementacja AsyncMem0Client używając httpx
+- **Lokalizacja**: backend/app/orchestrator/orchestrator.py
+- **Szczegóły**: Zobacz MEM0_ASYNC_PLAN.md
+
+### Stan po uproszczeniu (2025-07-08):
+- Usunięto ~700 linii kodu
+- Bezpośrednie użycie Mem0 i OpenAI API
+- Brak warstw abstrakcji
+- memory.py i transfer.py usunięte
+- orchestrator.py: 384 → 164 linii
 
 ## Common Commands
 
