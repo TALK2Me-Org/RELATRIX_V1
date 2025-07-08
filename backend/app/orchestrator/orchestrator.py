@@ -221,14 +221,21 @@ class Orchestrator:
                 {"role": "user", "content": message},
                 {"role": "assistant", "content": response_content}
             ]
+            
+            # Check for potential context echo
+            if any(phrase in response_content.lower() for phrase in ["wiem że", "nazywasz się", "lubisz", "pochodzisz z"]):
+                logger.warning("Assistant may be echoing context - watch for duplicates in Mem0")
+            
+            logger.info(f"Saving to Mem0 - user_id: {session.user_id}, run_id: {session.session_id}")
             memory_id = await self.memory.add(
                 messages=messages_to_save,
                 user_id=session.user_id,
-                agent_id=current_agent.slug,
-                run_id=session.session_id
+                run_id=session.session_id  # Only user_id + run_id as per Mem0 best practices
             )
             if memory_id:
                 logger.info(f"Saved conversation to Mem0: {memory_id}")
+            else:
+                logger.warning("Failed to save to Mem0 - no memory_id returned")
     
     async def _handle_transfer_suggestion(self, response: str) -> Optional[tuple]:
         """Handle transfer suggestions from agent responses"""
