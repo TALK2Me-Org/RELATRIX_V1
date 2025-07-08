@@ -1,44 +1,56 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster } from 'react-hot-toast';
-import { AuthProvider } from './contexts/AuthContext';
-import ChatPage from './pages/Chat';
-import { AuthPage } from './pages/AuthPage';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import Chat from './Chat'
+import Admin from './Admin'
+import Auth from './auth'
+import { getStoredAuth } from './api'
 
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [user, setUser] = useState<any>(null)
+
+  useEffect(() => {
+    const auth = getStoredAuth()
+    if (auth) {
+      setIsAuthenticated(true)
+      setUser(auth)
+    }
+  }, [])
+
+  const handleAuth = (authData: any) => {
+    setIsAuthenticated(true)
+    setUser(authData)
+  }
+
+  const handleLogout = () => {
+    localStorage.removeItem('relatrix_token')
+    localStorage.removeItem('relatrix_user')
+    setIsAuthenticated(false)
+    setUser(null)
+  }
+
   return (
-    <AuthProvider>
-      <Router>
-        <Toaster 
-          position="top-right"
-          toastOptions={{
-            duration: 4000,
-            style: {
-              background: '#363636',
-              color: '#fff',
-            },
-            success: {
-              style: {
-                background: '#059669',
-              },
-            },
-            error: {
-              style: {
-                background: '#DC2626',
-              },
-            },
-          }}
-        />
+    <Router>
+      <div className="min-h-screen bg-gray-50">
         <Routes>
-          <Route path="/" element={<Navigate to="/chat" replace />} />
-          <Route path="/chat" element={<ChatPage />} />
-          <Route path="/auth" element={<AuthPage />} />
-          {/* Future routes */}
-          <Route path="/admin/*" element={<div>Admin Panel - Coming Soon</div>} />
+          <Route path="/auth" element={
+            isAuthenticated ? 
+              <Navigate to="/chat" /> : 
+              <Auth onAuth={handleAuth} />
+          } />
+          <Route path="/chat" element={
+            <Chat user={user} onLogout={handleLogout} />
+          } />
+          <Route path="/admin" element={
+            isAuthenticated ? 
+              <Admin user={user} onLogout={handleLogout} /> : 
+              <Navigate to="/auth" />
+          } />
+          <Route path="/" element={<Navigate to="/chat" />} />
         </Routes>
-      </Router>
-    </AuthProvider>
-  );
+      </div>
+    </Router>
+  )
 }
 
-export default App;
+export default App
