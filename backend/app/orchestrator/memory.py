@@ -4,6 +4,7 @@ Philosophy: Let Mem0 handle all the complexity
 """
 
 import logging
+import json
 from typing import Dict, Any, List, Optional
 from redis import asyncio as aioredis
 from app.core.config import settings
@@ -71,7 +72,6 @@ class MemoryCoordinator:
         self, 
         messages: List[Dict[str, str]],
         user_id: str,
-        agent_id: Optional[str] = None,
         run_id: Optional[str] = None,
         metadata: Optional[Dict[str, Any]] = None
     ) -> str:
@@ -92,15 +92,15 @@ class MemoryCoordinator:
             }
             
             # Add optional parameters
-            if agent_id:
-                params["agent_id"] = agent_id
             if run_id:
                 params["run_id"] = run_id
             if metadata:
                 params["metadata"] = metadata
             
             # Let Mem0 v2 handle everything
-            logger.info(f"Adding {len(messages)} messages to Mem0 for user {user_id}")
+            logger.info(f"Mem0 add called with params: user_id={user_id}, run_id={run_id}")
+            logger.info(f"Messages being saved: {json.dumps(messages, indent=2)}")
+            
             result = self.mem0_client.add(messages, **params)
             
             # Extract memory ID if available
@@ -109,6 +109,7 @@ class MemoryCoordinator:
                 if results and 'id' in results[0]:
                     memory_id = results[0]['id']
                     logger.info(f"Mem0 created memory {memory_id} for user {user_id}")
+                    logger.debug(f"Full Mem0 response: {json.dumps(result, indent=2)}")
                     return memory_id
             
             return ""
@@ -142,6 +143,8 @@ class MemoryCoordinator:
             # Return results as-is
             memories = results if isinstance(results, list) else []
             logger.info(f"Found {len(memories)} memories for user {user_id}")
+            if memories:
+                logger.debug(f"First memory: {json.dumps(memories[0], indent=2)}")
             return memories
             
         except Exception as e:
