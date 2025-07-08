@@ -1,6 +1,6 @@
-# Nixpacks configuration for faster builds
+# Nixpacks configuration for React frontend
 [phases.install]
-cmds = ["npm ci --production=false"]
+cmds = ["npm install"]
 
 [phases.build]
 cmds = ["npm run build"]
