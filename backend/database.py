@@ -8,11 +8,20 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
 from config import settings
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Database setup
-engine = create_engine(settings.database_url)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
+logger.info(f"[DB] Connecting to database: {settings.database_url[:30]}...")
+try:
+    engine = create_engine(settings.database_url)
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    Base = declarative_base()
+    logger.info("[DB] Database engine created successfully")
+except Exception as e:
+    logger.error(f"[DB] Failed to create database engine: {e}")
+    raise
 
 
 # Models
@@ -27,7 +36,12 @@ class Agent(Base):
 
 
 # Create tables
-Base.metadata.create_all(bind=engine)
+try:
+    Base.metadata.create_all(bind=engine)
+    logger.info("[DB] Tables created/verified successfully")
+except Exception as e:
+    logger.error(f"[DB] Failed to create tables: {e}")
+    raise
 
 
 # Database dependency
@@ -111,14 +125,29 @@ Provide realistic practice and constructive feedback.""",
 
 def seed_agents():
     """Seed database with default agents"""
+    logger.info("[DB] Starting agent seeding...")
     db = SessionLocal()
     try:
+        count = 0
         for agent_data in DEFAULT_AGENTS:
             # Check if agent exists
             existing = db.query(Agent).filter_by(slug=agent_data["slug"]).first()
             if not existing:
                 agent = Agent(**agent_data)
                 db.add(agent)
+                count += 1
+                logger.info(f"[DB] Added agent: {agent_data['slug']}")
+            else:
+                logger.debug(f"[DB] Agent already exists: {agent_data['slug']}")
         db.commit()
+        logger.info(f"[DB] Seeding complete. Added {count} new agents")
+        
+        # Verify agents in database
+        total_agents = db.query(Agent).count()
+        logger.info(f"[DB] Total agents in database: {total_agents}")
+    except Exception as e:
+        logger.error(f"[DB] Failed to seed agents: {e}")
+        db.rollback()
+        raise
     finally:
         db.close()

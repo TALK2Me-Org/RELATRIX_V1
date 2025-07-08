@@ -30,8 +30,11 @@ export default function Admin({ user, onLogout }: Props) {
     try {
       const data = await getAgents()
       setAgents(data)
-    } catch (error) {
-      console.error('Failed to load agents:', error)
+      console.log('[ADMIN] Loaded agents:', data)
+    } catch (error: any) {
+      console.error('[ADMIN] Failed to load agents:', error)
+      console.error('[ADMIN] Error details:', error.response?.data)
+      alert(`Failed to load agents: ${error.response?.data?.detail || error.message}`)
     } finally {
       setLoading(false)
     }
@@ -71,6 +74,9 @@ export default function Admin({ user, onLogout }: Props) {
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
           <h1 className="text-xl font-semibold">RELATRIX Admin</h1>
           <div className="flex items-center gap-4">
+            <span className="text-xs text-gray-500">
+              API: {import.meta.env.VITE_API_URL || 'http://localhost:8000'}
+            </span>
             <span className="text-sm text-gray-600">{user?.email}</span>
             <button
               onClick={onLogout}
@@ -88,7 +94,9 @@ export default function Admin({ user, onLogout }: Props) {
           <div className="bg-white rounded-lg shadow p-4">
             <h2 className="text-lg font-semibold mb-4">Agents</h2>
             {loading ? (
-              <p className="text-gray-500">Loading...</p>
+              <p className="text-gray-500">Loading agents...</p>
+            ) : agents.length === 0 ? (
+              <p className="text-red-500">No agents found. Check backend connection.</p>
             ) : (
               <div className="space-y-2">
                 {agents.map(agent => (
