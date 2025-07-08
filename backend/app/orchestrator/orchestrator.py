@@ -6,15 +6,71 @@ No unnecessary abstractions!
 import logging
 from typing import AsyncGenerator, Optional, Dict, Any
 import json
+import httpx
 
 from openai import AsyncOpenAI
-from mem0 import MemoryClient
 
 from .registry import AgentRegistry
 from .models import Agent
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
+
+
+class AsyncMem0Client:
+    """Async client for Mem0 API using httpx"""
+    
+    def __init__(self, api_key: str):
+        self.api_key = api_key
+        self.base_url = "https://api.mem0.ai/v1"
+        self.headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        }
+    
+    async def search(self, query: str, user_id: str, limit: int = 20):
+        """Async search memories"""
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{self.base_url}/memories/search/",
+                headers=self.headers,
+                json={
+                    "query": query,
+                    "user_id": user_id,
+                    "limit": limit,
+                    "output_format": "v1.1"
+                },
+                timeout=10.0
+            )
+            response.raise_for_status()
+            data = response.json()
+            # Extract memories from response
+            if "results" in data:
+                return data["results"]
+            return data
+    
+    async def add(self, messages: list, user_id: str, **kwargs):
+        """Async add memories"""
+        async with httpx.AsyncClient() as client:
+            payload = {
+                "messages": messages,
+                "user_id": user_id,
+                "version": "v2",
+                "output_format": "v1.1"
+            }
+            payload.update(kwargs)
+            
+            response = await client.post(
+                f"{self.base_url}/memories/",
+                headers=self.headers,
+                json=payload,
+                timeout=10.0
+            )
+            response.raise_for_status()
+            
+            result = response.json()
+            logger.info(f"Mem0 add response: {json.dumps(result, indent=2)}")
+            return result
 
 
 class SimpleOrchestrator:
@@ -35,11 +91,11 @@ class SimpleOrchestrator:
         # Load agents from database
         await self.registry.load_agents()
         
-        # Initialize Mem0 if API key is configured
+        # Initialize Async Mem0 if API key is configured
         if hasattr(settings, 'mem0_api_key') and not settings.mem0_api_key.startswith('m0-placeholder'):
             try:
-                self.mem0 = MemoryClient(api_key=settings.mem0_api_key)
-                logger.info("Mem0 client initialized")
+                self.mem0 = AsyncMem0Client(api_key=settings.mem0_api_key)
+                logger.info("Async Mem0 client initialized")
             except Exception as e:
                 logger.error(f"Failed to initialize Mem0: {e}")
                 self.mem0 = None
@@ -73,10 +129,10 @@ class SimpleOrchestrator:
             try:
                 logger.info(f"Searching Mem0 for user {user_id}")
                 # Let Mem0 decide what's relevant for this message
-                memories = self.mem0.search(
+                memories = await self.mem0.search(
                     query=message,
                     user_id=user_id,
-                    limit=5
+                    limit=20  # Increased from 5 to get more context
                 )
                 logger.info(f"Found {len(memories)} memories")
             except Exception as e:
@@ -120,15 +176,13 @@ class SimpleOrchestrator:
             if user_id and self.mem0 and full_response:
                 try:
                     # Save the conversation pair
-                    result = self.mem0.add(
+                    result = await self.mem0.add(
                         messages=[
                             {"role": "user", "content": message},
                             {"role": "assistant", "content": full_response}
                         ],
-                        user_id=user_id,
-                        version="v2",  # Use v2 for automatic context management
-                        output_format="v1.1"
-                        # NO run_id - we want cross-session memory!
+                        user_id=user_id
+                        # version and output_format already set in AsyncMem0Client
                     )
                     logger.info(f"Saved to Mem0: {result}")
                 except Exception as e:

@@ -28,19 +28,24 @@
 
 ---
 
-## ⚠️ AKTUALNY PRIORYTET (2025-07-08)
+## ⚠️ AKTUALNY PRIORYTET (2025-07-09)
 
-### 🚨 Task 0.1: Naprawić Mem0 Retrieval [CRITICAL]
-**Problem:** Nowe wspomnienia nie pojawiają się w kontekście mimo zapisywania
+### 🚨 Task 0.1: Implementacja Async Mem0 Client [CRITICAL]
+**Problem:** Synchroniczny Mem0 client blokuje całą aplikację, chat jest wolny
 **Polecenie dla Claude Code:**
 ```
-1. Usuń run_id z memory.add() - używaj tylko user_id dla cross-session
-2. Debug response structure - dlaczego brak memory_id
-3. Rozważ wyłączenie async_mode=False
-4. Test z get_all() zamiast search()
-5. Sprawdź MEM0_DEBUG_SESSION.md dla szczegółów
+1. Stwórz AsyncMem0Client w orchestrator.py używając httpx
+2. Zamień wszystkie wywołania na async (search, add)
+3. Zwiększ limit w search() z 5 na 20
+4. Debug dlaczego add() zwraca {'results': []}
+5. Sprawdź MEM0_ASYNC_PLAN.md dla implementacji
 ```
-**Oczekiwany rezultat:** Mem0 zapisuje i pobiera wszystkie wspomnienia użytkownika
+**Oczekiwany rezultat:** Szybki chat, nieblokujące wywołania Mem0, działający zapis
+
+### ✅ Task 0.2: Railway Optimization [COMPLETED 2025-07-08]
+- Zmieniono Dockerfile → Nixpacks
+- Build time: 20 min → 3 min
+- Dodano Procfile i nixpacks.toml
 
 ---
 

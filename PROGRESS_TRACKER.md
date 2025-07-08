@@ -1,8 +1,8 @@
 # RELATRIX Progress Tracker
 
-## Ostatnia aktualizacja: 2025-07-08 14:30 CET
+## Ostatnia aktualizacja: 2025-07-08 20:30 CET
 
-## Status projektu: 58% Complete
+## Status projektu: 60% Complete
 
 ## Quick Stats
 - ✅ Fazy ukończone: 3/6 (+ częściowo FAZA 4)
@@ -172,6 +172,17 @@ RELATRIX_V1/
 ## Changelog
 
 ### 2025-07-08
+- **20:30** - 🚀 DEPLOY NA RAILWAY + DIAGNOZA PROBLEMÓW:
+  - Zoptymalizowano Railway builds: Dockerfile → Nixpacks (20 min → 3 min!)
+  - Backend i frontend działają na produkcji
+  - Chat działa ale WOLNO - problem z synchronicznym Mem0
+  - Mem0 search() działa ale blokuje aplikację
+  - Mem0 add() NIE DZIAŁA - zwraca {'results': []}
+  - Zidentyfikowano że używamy synchronicznego MemoryClient
+  - Plan: Implementacja AsyncMem0Client z httpx
+  - Utworzono plan async integracji w MEM0_ASYNC_PLAN.md
+
+### 2025-07-08
 - **14:30** - 🔥 RADYKALNE UPROSZCZENIE KODU:
   - Usunięto memory.py (204 linie) - niepotrzebny wrapper na Mem0
   - Usunięto transfer.py (156 linii) - nie działał 
@@ -333,8 +344,18 @@ RELATRIX_V1/
 
 ## Known Issues
 
-1. **🔴 CRITICAL: Transfer triggers nie działają**
-   - Logika w transfer.py nie jest zaimplementowana
+1. **🔴 CRITICAL: Mem0 synchroniczny client**
+   - MemoryClient blokuje całą aplikację
+   - Chat jest bardzo wolny (2-3s na wiadomość)
+   - Rozwiązanie: AsyncMem0Client z httpx
+
+2. **🔴 CRITICAL: Mem0 add() nie działa**
+   - Zwraca {'results': []} - pusta lista
+   - Nowe wspomnienia nie są zapisywane
+   - Możliwy problem z API endpoint lub parametrami
+
+3. **🟡 IMPORTANT: Transfer triggers nie działają**
+   - transfer.py został usunięty podczas uproszczenia
    - Agenci się nie przełączają automatycznie
 
 2. **~~🟡 FIXING~~** → **✅ NAPRAWIONE: Mem0 zapisywało podsumowania zamiast wiadomości** [2025-07-07]
