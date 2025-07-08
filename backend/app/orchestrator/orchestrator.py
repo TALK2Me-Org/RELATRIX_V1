@@ -16,7 +16,6 @@ from .models import (
     SessionState, Message, StreamChunk, 
     TransferReason, OrchestratorStatus
 )
-from .memory_modes import MemoryMode
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -83,14 +82,7 @@ class Orchestrator:
         await self.memory.save_session_state(session)
         self.active_sessions[session_id] = session
         
-        # Initialize memory metrics for the session
-        from .memory_modes import MemoryMetrics
-        config = self.memory.get_session_config(session_id)
-        if session_id not in self.memory.session_metrics:
-            self.memory.session_metrics[session_id] = MemoryMetrics(
-                session_id=session_id,
-                mode=config.mode
-            )
+        # Session created successfully
         
         logger.info(f"Created session {session_id} with agent {initial_agent}")
         return session
@@ -165,36 +157,44 @@ class Orchestrator:
             )
             return
         
-        # Get context window
-        import time
-        start_time = time.time()
-        context_messages = await self.memory.get_context_window(session)
-        context_time = time.time() - start_time
-        logger.info(f"Context retrieval took {context_time:.2f}s")
+        # Get memories from Mem0 if user is logged in
+        memories = []
+        if session.user_id:
+            memories = await self.memory.search(message, session.user_id, limit=5)
+            logger.info(f"Retrieved {len(memories)} memories for user {session.user_id}")
         
-        # Format messages for API
-        api_messages = self.streaming.format_messages_for_api(
-            current_agent,
-            context_messages
-        )
+        # Format messages for OpenAI API
+        api_messages = [{
+            "role": "system",
+            "content": current_agent.system_prompt
+        }]
+        
+        # Add memories as context if available
+        if memories:
+            memory_text = "Relevant user context:\n"
+            for mem in memories:
+                memory_content = mem.get('memory', mem.get('content', str(mem)))
+                memory_text += f"- {memory_content}\n"
+            api_messages.append({
+                "role": "system",
+                "content": memory_text
+            })
+        
+        # Add current user message
+        api_messages.append({
+            "role": "user",
+            "content": message
+        })
         
         # Stream response
-        stream_start = time.time()
         logger.info(f"Starting OpenAI stream for session {session_id}")
         response_content = ""
-        first_chunk_received = False
         async for chunk in self.streaming.stream_response(
             current_agent,
             api_messages,
             session_id,
             on_transfer_suggestion=self._handle_transfer_suggestion
         ):
-            # Log time to first chunk
-            if not first_chunk_received:
-                first_chunk_time = time.time() - stream_start
-                logger.info(f"First chunk received after {first_chunk_time:.2f}s")
-                first_chunk_received = True
-                
             # Accumulate response
             if chunk.type == "content":
                 response_content += chunk.content
@@ -215,14 +215,20 @@ class Orchestrator:
         # Save session state
         await self.memory.save_session_state(session)
         
-        # Save to long-term memory based on mode
-        config = self.memory.get_session_config(session.session_id)
-        if config.mode == MemoryMode.ALWAYS_FRESH:
-            # In premium mode, save every message
-            await self.memory.save_conversation_memory(session, current_agent=session.current_agent)
-        elif len(session.conversation_history) % 10 == 0:
-            # In other modes, save every 10 messages
-            await self.memory.save_conversation_memory(session, current_agent=session.current_agent)
+        # Save to Mem0 if user is logged in and we have both messages
+        if session.user_id and response_content:
+            messages_to_save = [
+                {"role": "user", "content": message},
+                {"role": "assistant", "content": response_content}
+            ]
+            memory_id = await self.memory.add(
+                messages=messages_to_save,
+                user_id=session.user_id,
+                agent_id=current_agent.slug,
+                run_id=session.session_id
+            )
+            if memory_id:
+                logger.info(f"Saved conversation to Mem0: {memory_id}")
     
     async def _handle_transfer_suggestion(self, response: str) -> Optional[tuple]:
         """Handle transfer suggestions from agent responses"""

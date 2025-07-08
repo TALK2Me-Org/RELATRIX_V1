@@ -88,47 +88,38 @@ railway run -s backend env
 - **ZAWSZE używaj czasu polskiego (Europe/Warsaw, UTC+1/UTC+2)**
 - W PROGRESS_TRACKER.md i innych dokumentach timestamp w formacie: `[YYYY-MM-DD HH:MM PL]`
 
-## Memory Modes System
+## Memory System - "Mem0 Native" (Uproszczone 2025-07-08)
 
-### Overview
-RELATRIX używa 4 trybów pracy pamięci, które balansują między kosztami i dokładnością:
+### Filozofia
+Mem0 v2 sam zarządza całą złożonością - my tylko przekazujemy dane.
 
-1. **Cache First** (domyślny) - Minimalne koszty, 1 retrieval per sesja
-2. **Always Fresh** - Maksymalna dokładność, retrieval per wiadomość  
-3. **Smart Triggers** - Balans, retrieval przy triggerach
-4. **Test Mode** - Testowanie z pełnym logowaniem
+### Jak to działa:
+```python
+# Przy każdej wiadomości:
+1. Jeśli user zalogowany - pobierz wspomnienia:
+   memories = memory.search(user_message, user_id)
 
-### Status implementacji (2025-07-07 18:00 PL):
-- ✅ Naprawiono save_conversation_memory() - wysyła rzeczywiste wiadomości
-- ✅ ALWAYS_FRESH: zapisuje ostatnią parę (user + assistant) 
-- ✅ CACHE_FIRST: zapisuje całą paczkę na końcu sesji
-- ✅ SMART_TRIGGERS: zapisuje paczki co N wiadomości
-- ✅ Używamy agent_id i run_id zgodnie z dokumentacją Mem0
-- 🔴 KRYTYCZNE: Używamy Mem0 v1 (przestarzałe) - konieczna migracja do v2!
+2. Wyślij do OpenAI minimalny kontekst:
+   - System prompt agenta
+   - Wspomnienia z Mem0 (jeśli są)
+   - Aktualna wiadomość użytkownika
 
-### API Endpoints
-```bash
-# Set memory mode
-POST /api/memory/mode
-{
-  "mode": "smart_triggers",
-  "use_preset": "balanced"  # lub custom_config
-}
-
-# Get current mode
-GET /api/memory/mode?session_id=xxx
-
-# Get metrics
-GET /api/memory/metrics/{session_id}
-
-# Clear cache
-POST /api/memory/cache/clear
+3. Po odpowiedzi zapisz do Mem0:
+   memory.add([user_msg, assistant_msg], user_id)
 ```
 
-### Monitoring
-- Sprawdzaj metryki: cache hit rate, koszt per sesja, triggery
-- W Test Mode wszystko jest logowane dla analizy
-- Smart Triggers konfigurowalne per sesja
+### Co się zmieniło (2025-07-08):
+- ✅ Usunięto całą logikę Memory Modes
+- ✅ memory.py: 650 → 201 linii (-70%)
+- ✅ Brak cache'owania kontekstu w Redis
+- ✅ Mem0 v2 automatycznie zarządza kontekstem
+- ✅ Niższe koszty - wysyłamy minimum tokenów
+
+### Status Mem0:
+- ✅ Używamy Mem0 v2 API (version="v2")
+- ✅ Async mode włączony (nie blokuje odpowiedzi)
+- ✅ Każda para wiadomości zapisywana osobno
+- ✅ Mem0 sam decyduje co jest ważne
 
 ## System Autoryzacji (DZIAŁA!)
 

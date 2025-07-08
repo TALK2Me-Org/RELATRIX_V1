@@ -67,7 +67,7 @@ orchestrator/
 ├── registry.py        # Zarządzanie agentami
 ├── streaming.py       # SSE streaming
 ├── transfer.py        # Logika przełączania (TODO)
-└── memory.py          # Pamięć krótko i długoterminowa
+└── memory.py          # Prosta integracja z Mem0 v2 (201 linii)
 ```
 
 **Flow przetwarzania wiadomości:**
@@ -121,50 +121,41 @@ def check_transfer_triggers(message: str, current_agent: Agent):
 - "need to practice" → Communication Simulator
 - "too emotional" → Empathy Amplifier
 
-### Memory Architecture
+### Memory Architecture - "Mem0 Native" (Uproszczone 2025-07-08)
 
-**Dwupoziomowa pamięć z 4 trybami pracy:**
+**Filozofia: Let Mem0 handle all the complexity**
 
-1. **Redis** (krótkoterminowa)
-   - Cache sesji z konfiguralnym TTL
-   - Stan konwersacji
-   - Szybki dostęp bez dodatkowych kosztów
+1. **Mem0 v2** (główna pamięć)
+   - Automatyczne zarządzanie kontekstem
+   - Inteligentne wybieranie wspomnień
+   - Zapisywanie każdej pary (user + assistant)
+   - Używamy: version="v2", async_mode=True
 
-2. **Mem0 API** (długoterminowa)
-   - Historia relacji
-   - Wzorce zachowań
-   - Insights między sesjami
+2. **Redis** (tylko session state)
+   - Tymczasowe dane sesji (24h TTL)
+   - NIE cache'ujemy kontekstu
+   - Minimalne wykorzystanie
 
-**Memory Modes:**
-- **Cache First**: Minimalne koszty, 1 retrieval per sesja
-- **Always Fresh**: Maksymalna dokładność, retrieval per wiadomość
-- **Smart Triggers**: Balans - retrieval przy ważnych eventach
-- **Test Mode**: Porównanie wydajności wszystkich trybów
-
-**Smart Triggers** (konfigurowalne):
-- Co N wiadomości
-- Po X minutach
-- Przy zmianie agenta
-- Przy skoku emocji (keywords)
-- Przy zmianie tematu
-- Przy ważnych informacjach (decyzje)
-
-**Memory Modes Implementation**:
+**Prosty flow:**
 ```python
-# W memory.py
-- set_global_mode() - ustaw tryb globalny
-- set_session_mode() - ustaw tryb dla sesji
-- should_refresh_memory() - sprawdź triggery
-- retrieve_user_context() - pobierz z cache/Mem0
-- Metryki: cache hits, koszty, czas
-
-# API endpoints (/api/memory)
-- POST /mode - ustaw tryb
-- GET /mode - pobierz konfigurację
-- GET /metrics/{session_id} - metryki sesji
-- POST /cache/clear - wyczyść cache
-- GET /modes - lista trybów
+# Przy każdej wiadomości:
+1. Pobierz wspomnienia: memory.search(query, user_id)
+2. Wyślij do OpenAI: [system_prompt, memories, user_message]
+3. Zapisz do Mem0: memory.add([user, assistant], user_id)
 ```
+
+**Co usunęliśmy:**
+- ❌ 4 Memory Modes (CACHE_FIRST, ALWAYS_FRESH, etc.)
+- ❌ Smart Triggers (message count, time, emotions)
+- ❌ Metryki i cache'owanie kontekstu
+- ❌ 11 metod w memory.py
+- ❌ API endpointy /api/memory/*
+
+**Rezultat:**
+- memory.py: 650 → 201 linii (-70%)
+- Tylko 5 metod: initialize, add, search, save/load_session_state
+- Niższe koszty (mniej tokenów do OpenAI)
+- Lepsza jakość (Mem0 v2 wybiera najlepszy kontekst)
 
 ### Database Schema
 
