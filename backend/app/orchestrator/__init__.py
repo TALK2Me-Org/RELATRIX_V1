@@ -1,18 +1,13 @@
 """
-RELATRIX Multi-Agent Orchestrator
-Core module for managing AI agents and their interactions
+RELATRIX Simple Orchestrator
+Minimal and direct!
 """
 
 from .registry import AgentRegistry
-from .transfer import TransferEngine
-from .memory import MemoryCoordinator
-from .streaming import StreamingHandler
-from .orchestrator import Orchestrator
+from .orchestrator import SimpleOrchestrator, get_orchestrator
 
 __all__ = [
     'AgentRegistry',
-    'TransferEngine', 
-    'MemoryCoordinator',
-    'StreamingHandler',
-    'Orchestrator'
+    'SimpleOrchestrator',
+    'get_orchestrator'
 ]
