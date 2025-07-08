@@ -151,6 +151,15 @@ curl -H "Authorization: Bearer YOUR_TOKEN" \
 - 🔴 Mem0 v1 aktualizuje oryginalne wspomnienia - konieczna migracja do v2 API!
 - Rozwiązanie: Dodać version="v2" do wszystkich wywołań Mem0
 
+## Aktualny Problem do Rozwiązania (2025-07-08)
+
+### Mem0 Retrieval Issue
+- **Problem**: Nowe wspomnienia nie pojawiają się w kontekście
+- **Przykład**: "Lubię lody waniliowe" nie pojawia się przy kolejnych zapytaniach
+- **Hipoteza**: run_id izoluje wspomnienia per sesja
+- **Rozwiązanie**: Użyj tylko user_id (bez run_id) dla cross-session memory
+- **Szczegóły**: Zobacz MEM0_DEBUG_SESSION.md
+
 ## Common Commands
 
 ### Git Commands

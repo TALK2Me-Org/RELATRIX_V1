@@ -1,8 +1,8 @@
 # RELATRIX Progress Tracker
 
-## Ostatnia aktualizacja: 2025-07-08 02:57 CET
+## Ostatnia aktualizacja: 2025-07-08 04:30 CET
 
-## Status projektu: 54% Complete
+## Status projektu: 56% Complete
 
 ## Quick Stats
 - ✅ Fazy ukończone: 3/6 (+ częściowo FAZA 4)
@@ -172,6 +172,16 @@ RELATRIX_V1/
 ## Changelog
 
 ### 2025-07-08
+- **04:30** - 🔍 DEEP DIVE Mem0 - Odkrycie problemu z retrieval:
+  - Zidentyfikowano "echo chamber" - AI powtarza kontekst, Mem0 zapisuje to jako nowe fakty
+  - Przykład: "Planujesz zrobić makaron" z wczoraj pojawia się jako fakt dzisiaj
+  - Usunięto agent_id z zapisywania - używamy tylko user_id + run_id
+  - Dodano szczegółowe logowanie do debugowania
+  - PROBLEM: Mem0 zapisuje (200 OK) ale nie zwraca memory_id
+  - GŁÓWNY PROBLEM: Nowe wspomnienia NIE pojawiają się w kontekście!
+  - Hipoteza: run_id może izolować wspomnienia per sesja
+  - Sugerowane rozwiązanie: używać TYLKO user_id dla cross-session memory
+  - Utworzono MEM0_DEBUG_SESSION.md z planem naprawy
 - **02:57** - 🚀 RADYKALNE UPROSZCZENIE - "Mem0 Native":
   - Usunięto CAŁĄ logikę Memory Modes (4 tryby, triggery, metryki)
   - memory.py zredukowano z 650 do 201 linii kodu (-70%!)
@@ -341,13 +351,14 @@ RELATRIX_V1/
 
 ## Next Steps (Priorytety)
 
-1. **~~Migracja Mem0 do v2 API~~** [CRITICAL - ✅ ZROBIONE 2025-07-07]
-   - ~~Dodać version="v2" do wszystkich wywołań add() i search()~~
-   - ~~Zaktualizować memory.py zgodnie z dokumentacją v2~~
-   - ~~Przetestować czy v2 rozwiązuje problem aktualizowania wspomnień~~
-   - ~~Upewnić się że kontekst jest automatycznie zarządzany~~
+1. **Naprawić Mem0 Retrieval** [CRITICAL - NEXT] 🚨
+   - Usunąć run_id z zapisywania (używać tylko user_id)
+   - Debugować strukturę response (dlaczego brak memory_id)
+   - Przetestować cross-session memory
+   - Rozważyć wyłączenie async_mode
+   - Sprawdzić get_all() zamiast search()
 
-2. **Admin Panel - Backend** [HIGH - NEXT]
+2. **Admin Panel - Backend** [HIGH]
    - Dashboard API endpoints
    - User kartoteki endpoints
    - Memory modes configuration API

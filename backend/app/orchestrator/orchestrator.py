@@ -1,383 +1,163 @@
 """
-Main Orchestrator - Coordinates all components
+Simple Orchestrator - Direct integration with Mem0 and OpenAI
+No unnecessary abstractions!
 """
 
 import logging
 from typing import AsyncGenerator, Optional, Dict, Any
-from datetime import datetime
-import asyncio
-import uuid
+import json
+
+from openai import AsyncOpenAI
+from mem0 import MemoryClient
 
 from .registry import AgentRegistry
-from .transfer import TransferEngine
-from .memory import MemoryCoordinator
-from .streaming import StreamingHandler
-from .models import (
-    SessionState, Message, StreamChunk, 
-    TransferReason, OrchestratorStatus
-)
+from .models import Agent
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
 
-class Orchestrator:
-    """Main orchestrator for multi-agent system"""
+class SimpleOrchestrator:
+    """Ultra simple orchestrator - just connects the pieces"""
     
     def __init__(self):
         self.registry = AgentRegistry()
-        self.transfer_engine = TransferEngine(self.registry)
-        self.memory = MemoryCoordinator()
-        self.streaming = StreamingHandler()
-        
-        # Metrics
-        self.start_time = datetime.now()
-        self.total_transfers = 0
-        self.active_sessions: Dict[str, SessionState] = {}
-        
-        logger.info("Orchestrator initialized")
+        self.mem0 = None
+        self.openai = AsyncOpenAI(api_key=settings.openai_api_key)
+        self._initialized = False
+        logger.info("Simple Orchestrator initialized")
     
     async def initialize(self):
-        """Initialize all components"""
-        # Load agents
+        """Initialize components"""
+        if self._initialized:
+            return
+            
+        # Load agents from database
         await self.registry.load_agents()
         
-        # Initialize memory
-        await self.memory.initialize()
+        # Initialize Mem0 if API key is configured
+        if hasattr(settings, 'mem0_api_key') and not settings.mem0_api_key.startswith('m0-placeholder'):
+            try:
+                self.mem0 = MemoryClient(api_key=settings.mem0_api_key)
+                logger.info("Mem0 client initialized")
+            except Exception as e:
+                logger.error(f"Failed to initialize Mem0: {e}")
+                self.mem0 = None
         
-        # Compile transfer patterns
-        agents = await self.registry.get_all_agents()
-        self.transfer_engine.compile_patterns(agents)
-        
-        logger.info("Orchestrator fully initialized")
-    
-    async def create_session(
-        self, 
-        session_id: Optional[str] = None,
-        user_id: Optional[str] = None,
-        initial_agent: str = "misunderstanding_protector"
-    ) -> SessionState:
-        """Create new orchestrator session"""
-        if not session_id:
-            session_id = str(uuid.uuid4())
-        
-        # Check for existing session
-        existing = await self.memory.load_session_state(session_id)
-        if existing:
-            self.active_sessions[session_id] = existing
-            return existing
-        
-        # Create new session
-        session = SessionState(
-            session_id=session_id,
-            user_id=user_id,
-            current_agent=initial_agent,
-            metadata={
-                "created_by": "orchestrator",
-                "version": "1.0.0"
-            }
-        )
-        
-        # Save to memory
-        await self.memory.save_session_state(session)
-        self.active_sessions[session_id] = session
-        
-        # Session created successfully
-        
-        logger.info(f"Created session {session_id} with agent {initial_agent}")
-        return session
+        self._initialized = True
+        logger.info("Orchestrator ready")
     
     async def process_message(
         self,
-        session_id: str,
         message: str,
-        user_id: Optional[str] = None
-    ) -> AsyncGenerator[StreamChunk, None]:
+        user_id: Optional[str] = None,
+        agent_slug: str = "misunderstanding_protector"
+    ) -> AsyncGenerator[str, None]:
         """
         Process user message and stream response
-        Main entry point for chat interactions
+        Super simple: get agent → get memories → call OpenAI → save to Mem0
         """
-        logger.info(f"process_message: session_id={session_id}, user_id={user_id}")
-        # Get or create session
-        session = self.active_sessions.get(session_id)
-        if not session:
-            session = await self.create_session(session_id, user_id)
+        if not self._initialized:
+            await self.initialize()
         
-        # Update user_id if provided
-        if user_id and not session.user_id:
-            session.user_id = user_id
-        
-        # Add user message to history
-        user_msg = Message(
-            role="user",
-            content=message,
-            metadata={"session_id": session_id}
-        )
-        session.add_message(user_msg)
-        
-        # Check for transfer triggers
-        transfer_check = await self.transfer_engine.analyze_message(
-            message, 
-            session.current_agent,
-            session
-        )
-        
-        # Handle transfer if needed
-        if transfer_check:
-            target_agent, trigger, reason = transfer_check
-            
-            # Execute transfer
-            transfer_event = await self.transfer_engine.execute_transfer(
-                session,
-                target_agent,
-                reason,
-                trigger,
-                message
-            )
-            
-            if transfer_event.success:
-                self.total_transfers += 1
-                
-                # Get new agent
-                new_agent = await self.registry.get_agent(target_agent)
-                if new_agent:
-                    # Send transfer notification
-                    old_agent = await self.registry.get_agent(transfer_event.from_agent)
-                    yield await self.streaming.generate_transfer_notification(
-                        old_agent, new_agent, trigger
-                    )
-        
-        # Get current agent
-        current_agent = await self.registry.get_agent(session.current_agent)
-        if not current_agent:
-            yield StreamChunk(
-                type="error",
-                content="Agent not found",
-                metadata={"agent_id": session.current_agent}
-            )
+        # 1. Get agent
+        agent = await self.registry.get_agent(agent_slug)
+        if not agent:
+            logger.error(f"Agent {agent_slug} not found")
+            yield f"Error: Agent {agent_slug} not found"
             return
         
-        # Get memories from Mem0 if user is logged in
+        # 2. Get memories from Mem0 (if user is logged in)
         memories = []
-        if session.user_id:
-            memories = await self.memory.search(message, session.user_id, limit=5)
-            logger.info(f"Retrieved {len(memories)} memories for user {session.user_id}")
+        if user_id and self.mem0:
+            try:
+                logger.info(f"Searching Mem0 for user {user_id}")
+                # Let Mem0 decide what's relevant for this message
+                memories = self.mem0.search(
+                    query=message,
+                    user_id=user_id,
+                    limit=5
+                )
+                logger.info(f"Found {len(memories)} memories")
+            except Exception as e:
+                logger.error(f"Mem0 search failed: {e}")
         
-        # Format messages for OpenAI API
-        api_messages = [{
-            "role": "system",
-            "content": current_agent.system_prompt
-        }]
+        # 3. Build messages for OpenAI
+        messages = [
+            {"role": "system", "content": agent.system_prompt}
+        ]
         
         # Add memories as context if available
         if memories:
-            memory_text = "Relevant user context:\n"
+            context = "Relevant user context:\n"
             for mem in memories:
+                # Handle different memory formats
                 memory_content = mem.get('memory', mem.get('content', str(mem)))
-                memory_text += f"- {memory_content}\n"
-            api_messages.append({
-                "role": "system",
-                "content": memory_text
-            })
+                context += f"- {memory_content}\n"
+            messages.append({"role": "system", "content": context})
+            logger.debug(f"Added context: {context}")
         
-        # Add current user message
-        api_messages.append({
-            "role": "user",
-            "content": message
-        })
+        messages.append({"role": "user", "content": message})
         
-        # Stream response
-        logger.info(f"Starting OpenAI stream for session {session_id}")
-        response_content = ""
-        async for chunk in self.streaming.stream_response(
-            current_agent,
-            api_messages,
-            session_id,
-            on_transfer_suggestion=self._handle_transfer_suggestion
-        ):
-            # Accumulate response
-            if chunk.type == "content":
-                response_content += chunk.content
-            
-            # Yield chunk to caller
-            yield chunk
-        
-        # Add assistant message to history
-        if response_content:
-            assistant_msg = Message(
-                role="assistant",
-                content=response_content,
-                agent_id=current_agent.slug,
-                metadata={"session_id": session_id}
-            )
-            session.add_message(assistant_msg)
-        
-        # Save session state
-        await self.memory.save_session_state(session)
-        
-        # Save to Mem0 if user is logged in and we have both messages
-        if session.user_id and response_content:
-            messages_to_save = [
-                {"role": "user", "content": message},
-                {"role": "assistant", "content": response_content}
-            ]
-            
-            # Check for potential context echo
-            if any(phrase in response_content.lower() for phrase in ["wiem że", "nazywasz się", "lubisz", "pochodzisz z"]):
-                logger.warning("Assistant may be echoing context - watch for duplicates in Mem0")
-            
-            logger.info(f"Saving to Mem0 - user_id: {session.user_id}, run_id: {session.session_id}")
-            memory_id = await self.memory.add(
-                messages=messages_to_save,
-                user_id=session.user_id,
-                run_id=session.session_id  # Only user_id + run_id as per Mem0 best practices
-            )
-            if memory_id:
-                logger.info(f"Saved conversation to Mem0: {memory_id}")
-            else:
-                logger.warning("Failed to save to Mem0 - no memory_id returned")
-    
-    async def _handle_transfer_suggestion(self, response: str) -> Optional[tuple]:
-        """Handle transfer suggestions from agent responses"""
-        # Extract suggested transfer from response
-        # This is a simplified implementation
-        suggestions = {
-            "emotional_vomit_dumper": ["vent", "emotional support", "overwhelmed"],
-            "solution_finder": ["find solutions", "action plan", "what to do"],
-            "conflict_solver": ["resolve conflict", "mediation", "both partners"]
-        }
-        
-        response_lower = response.lower()
-        for agent, keywords in suggestions.items():
-            if any(keyword in response_lower for keyword in keywords):
-                return agent, "Agent suggested transfer"
-        
-        return None
-    
-    async def get_session_status(self, session_id: str) -> Optional[Dict[str, Any]]:
-        """Get current session status"""
-        session = self.active_sessions.get(session_id)
-        if not session:
-            session = await self.memory.load_session_state(session_id)
-        
-        if not session:
-            return None
-        
-        current_agent = await self.registry.get_agent(session.current_agent)
-        
-        return {
-            "session_id": session.session_id,
-            "user_id": session.user_id,
-            "current_agent": {
-                "slug": current_agent.slug,
-                "name": current_agent.name,
-                "description": current_agent.description
-            } if current_agent else None,
-            "message_count": len(session.conversation_history),
-            "transfer_count": len(session.transfer_history),
-            "created_at": session.created_at.isoformat(),
-            "updated_at": session.updated_at.isoformat()
-        }
-    
-    async def manual_transfer(
-        self,
-        session_id: str,
-        target_agent: str,
-        reason: str = "Manual transfer requested"
-    ) -> Dict[str, Any]:
-        """Manually transfer to a different agent"""
-        session = self.active_sessions.get(session_id)
-        if not session:
-            session = await self.memory.load_session_state(session_id)
-        
-        if not session:
-            return {"success": False, "error": "Session not found"}
-        
-        # Execute transfer
-        transfer_event = await self.transfer_engine.execute_transfer(
-            session,
-            target_agent,
-            TransferReason.USER_REQUEST,
-            "manual",
-            reason
-        )
-        
-        if transfer_event.success:
-            self.total_transfers += 1
-            await self.memory.save_session_state(session)
-            
-            return {
-                "success": True,
-                "from_agent": transfer_event.from_agent,
-                "to_agent": transfer_event.to_agent,
-                "timestamp": transfer_event.timestamp.isoformat()
-            }
-        else:
-            return {
-                "success": False,
-                "error": transfer_event.error
-            }
-    
-    async def get_status(self) -> OrchestratorStatus:
-        """Get orchestrator status"""
-        agents = await self.registry.get_all_agents()
-        uptime = (datetime.now() - self.start_time).total_seconds()
-        
-        return OrchestratorStatus(
-            healthy=True,
-            agents_loaded=len(agents),
-            active_sessions=len(self.active_sessions),
-            total_transfers=self.total_transfers,
-            uptime_seconds=uptime,
-            last_reload=self.registry.last_loaded
-        )
-    
-    async def reload_agents(self) -> Dict[str, Any]:
-        """Reload agents from database"""
+        # 4. Stream response from OpenAI
         try:
-            agents = await self.registry.reload_agents()
+            stream = await self.openai.chat.completions.create(
+                model=agent.openai_model,
+                messages=messages,
+                temperature=agent.temperature,
+                max_tokens=agent.max_tokens,
+                stream=True
+            )
             
-            # Recompile transfer patterns
-            self.transfer_engine.compile_patterns(list(agents.values()))
+            full_response = ""
+            async for chunk in stream:
+                if chunk.choices and chunk.choices[0].delta.content:
+                    content = chunk.choices[0].delta.content
+                    full_response += content
+                    yield content
             
-            return {
-                "success": True,
-                "agents_loaded": len(agents),
-                "timestamp": datetime.now().isoformat()
-            }
+            # 5. Save to Mem0 (if user is logged in)
+            if user_id and self.mem0 and full_response:
+                try:
+                    # Save the conversation pair
+                    result = self.mem0.add(
+                        messages=[
+                            {"role": "user", "content": message},
+                            {"role": "assistant", "content": full_response}
+                        ],
+                        user_id=user_id,
+                        version="v2",  # Use v2 for automatic context management
+                        output_format="v1.1"
+                        # NO run_id - we want cross-session memory!
+                    )
+                    logger.info(f"Saved to Mem0: {result}")
+                except Exception as e:
+                    logger.error(f"Failed to save to Mem0: {e}")
+            
         except Exception as e:
-            logger.error(f"Error reloading agents: {e}")
-            return {
-                "success": False,
-                "error": str(e)
-            }
+            logger.error(f"OpenAI streaming error: {e}")
+            yield f"Error: {str(e)}"
     
-    async def cleanup_sessions(self, inactive_hours: int = 24):
-        """Clean up inactive sessions"""
-        cutoff = datetime.now().timestamp() - (inactive_hours * 3600)
-        removed = 0
-        
-        for session_id in list(self.active_sessions.keys()):
-            session = self.active_sessions[session_id]
-            if session.updated_at.timestamp() < cutoff:
-                del self.active_sessions[session_id]
-                removed += 1
-        
-        if removed:
-            logger.info(f"Cleaned up {removed} inactive sessions")
-        
-        # Also trigger Redis cleanup
-        await self.memory.cleanup_old_sessions()
+    async def get_agents(self) -> Dict[str, Agent]:
+        """Get all available agents"""
+        if not self._initialized:
+            await self.initialize()
+        return await self.registry.get_all_agents()
+    
+    async def reload_agents(self) -> int:
+        """Reload agents from database"""
+        agents = await self.registry.reload_agents()
+        return len(agents)
 
 
-# Global orchestrator instance (lazy initialization)
+# Global instance
 _orchestrator = None
 
-def get_orchestrator() -> Orchestrator:
+def get_orchestrator() -> SimpleOrchestrator:
     """Get or create orchestrator instance"""
     global _orchestrator
     if _orchestrator is None:
-        _orchestrator = Orchestrator()
+        _orchestrator = SimpleOrchestrator()
     return _orchestrator
 
 # For backward compatibility

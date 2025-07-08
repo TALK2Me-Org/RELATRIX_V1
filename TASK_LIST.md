@@ -28,7 +28,23 @@
 
 ---
 
-## FAZA 1: SETUP & INFRASTRUCTURE 🏗️
+## ⚠️ AKTUALNY PRIORYTET (2025-07-08)
+
+### 🚨 Task 0.1: Naprawić Mem0 Retrieval [CRITICAL]
+**Problem:** Nowe wspomnienia nie pojawiają się w kontekście mimo zapisywania
+**Polecenie dla Claude Code:**
+```
+1. Usuń run_id z memory.add() - używaj tylko user_id dla cross-session
+2. Debug response structure - dlaczego brak memory_id
+3. Rozważ wyłączenie async_mode=False
+4. Test z get_all() zamiast search()
+5. Sprawdź MEM0_DEBUG_SESSION.md dla szczegółów
+```
+**Oczekiwany rezultat:** Mem0 zapisuje i pobiera wszystkie wspomnienia użytkownika
+
+---
+
+## FAZA 1: SETUP & INFRASTRUCTURE 🏗️ ✅ [UKOŃCZONE]
 
 ### Task 1.1: Project Structure & Environment
 **Polecenie dla Claude Code:**
