@@ -36,6 +36,7 @@ router = APIRouter()
 
 class ChatMessage(BaseModel):
     message: str
+    session_id: Optional[str] = None
     agent_slug: str = "misunderstanding_protector"
 
 
@@ -60,8 +61,13 @@ async def stream_chat(
                 user_id=user_id,
                 agent_slug=request.agent_slug
             ):
-                # Simple SSE format
-                yield f"data: {chunk}\n\n"
+                # JSON format for frontend compatibility
+                data = {
+                    "type": "content",
+                    "content": chunk,
+                    "agent_id": request.agent_slug
+                }
+                yield f"data: {json.dumps(data)}\n\n"
             
             # End of stream
             yield "data: [DONE]\n\n"
