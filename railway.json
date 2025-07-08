@@ -5,86 +5,35 @@
   },
   "deploy": {
     "numReplicas": 1,
-    "sleepApplication": false,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10
   },
-  "environments": {
-    "production": {
-      "variables": {
-        "RAILWAY_ENVIRONMENT": "production",
-        "DEBUG": "False",
-        "API_HOST": "0.0.0.0",
-        "PORT": "$PORT"
-      }
-    },
-    "staging": {
-      "variables": {
-        "RAILWAY_ENVIRONMENT": "staging",
-        "DEBUG": "True",
-        "API_HOST": "0.0.0.0",
-        "PORT": "$PORT"
-      }
-    }
-  },
   "services": {
     "backend": {
-      "source": "./backend",
+      "source": {
+        "repo": "TALK2Me-Org/RELATRIX_V1",
+        "branch": "main"
+      },
       "build": {
-        "watchPatterns": [
-          "**/*.py"
-        ]
+        "buildCommand": "cd backend && pip install -r requirements.txt"
       },
       "deploy": {
-        "startCommand": "uvicorn app.main:app --host 0.0.0.0 --port $PORT",
+        "startCommand": "cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT",
         "healthcheckPath": "/health",
-        "healthcheckTimeout": 100
-      },
-      "variables": {
-        "OPENAI_API_KEY": "$OPENAI_API_KEY",
-        "MEM0_API_KEY": "$MEM0_API_KEY",
-        "MEM0_USER_ID": "$MEM0_USER_ID",
-        "SUPABASE_URL": "$SUPABASE_URL",
-        "SUPABASE_ANON_KEY": "$SUPABASE_ANON_KEY",
-        "SUPABASE_SERVICE_ROLE_KEY": "$SUPABASE_SERVICE_ROLE_KEY",
-        "JWT_SECRET_KEY": "$JWT_SECRET_KEY",
-        "REDIS_URL": "$REDIS_URL",
-        "DATABASE_URL": "$DATABASE_URL",
-        "MONTHLY_BUDGET_LIMIT": "$MONTHLY_BUDGET_LIMIT",
-        "COST_ALERT_THRESHOLD": "$COST_ALERT_THRESHOLD",
-        "ADMIN_EMAIL": "$ADMIN_EMAIL",
-        "ADMIN_PASSWORD": "$ADMIN_PASSWORD"
+        "healthcheckTimeout": 300
       }
     },
     "frontend": {
-      "source": "./frontend",
+      "source": {
+        "repo": "TALK2Me-Org/RELATRIX_V1",
+        "branch": "main"
+      },
       "build": {
-        "watchPatterns": [
-          "**/*.ts",
-          "**/*.tsx",
-          "**/*.js",
-          "**/*.jsx"
-        ]
+        "buildCommand": "cd frontend && npm install && npm run build"
       },
       "deploy": {
-        "startCommand": "npm run build && npx serve -s build -l $PORT",
-        "healthcheckPath": "/",
-        "healthcheckTimeout": 100
-      },
-      "variables": {
-        "REACT_APP_API_URL": "https://relatrix-backend.up.railway.app",
-        "REACT_APP_SUPABASE_URL": "$SUPABASE_URL",
-        "REACT_APP_SUPABASE_ANON_KEY": "$SUPABASE_ANON_KEY",
-        "GENERATE_SOURCEMAP": "false"
+        "startCommand": "cd frontend && npm run preview -- --port $PORT --host 0.0.0.0"
       }
-    }
-  },
-  "plugins": {
-    "postgresql": {
-      "plan": "hobby"
-    },
-    "redis": {
-      "plan": "hobby"
     }
   }
 }

@@ -1,6 +1,6 @@
 # RELATRIX Progress Tracker
 
-## Ostatnia aktualizacja: 2025-07-08 20:30 CET
+## Ostatnia aktualizacja: 2025-07-08 21:15 CET
 
 ## Status projektu: 60% Complete
 
@@ -170,6 +170,15 @@ RELATRIX_V1/
 - [ ] Task 6.5: E2E Testing - ❌ Brak
 
 ## Changelog
+
+### 2025-07-08
+- **21:15** - 🚀 IMPLEMENTACJA ASYNC MEM0 CLIENT:
+  - Zastąpiono synchroniczny MemoryClient asynchronicznym AsyncMem0Client
+  - Używamy httpx dla nieblokujących HTTP requests
+  - Zwiększono limit search() z 5 na 20 dla lepszego kontekstu
+  - Dodano debug logging dla response z Mem0 add()
+  - Chat powinien być teraz 2-3x szybszy
+  - Deployed na Railway - czekamy na potwierdzenie działania
 
 ### 2025-07-08
 - **20:30** - 🚀 DEPLOY NA RAILWAY + DIAGNOZA PROBLEMÓW:
