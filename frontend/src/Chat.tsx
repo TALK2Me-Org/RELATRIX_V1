@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { streamChat } from './api'
 
 interface Message {
@@ -22,6 +23,7 @@ const AGENTS = [
 ]
 
 export default function Chat({ user, onLogout }: Props) {
+  const navigate = useNavigate()
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [currentAgent, setCurrentAgent] = useState('misunderstanding_protector')
@@ -115,12 +117,20 @@ export default function Chat({ user, onLogout }: Props) {
           </div>
           <div className="flex items-center gap-4">
             {user && (
-              <span className="text-sm text-gray-600">
-                {user.email}
-              </span>
+              <>
+                <span className="text-sm text-gray-600">
+                  {user.email}
+                </span>
+                <button
+                  onClick={() => navigate('/admin')}
+                  className="text-sm text-blue-600 hover:text-blue-800"
+                >
+                  Admin
+                </button>
+              </>
             )}
             <button
-              onClick={onLogout}
+              onClick={user ? onLogout : () => navigate('/auth')}
               className="text-sm text-gray-600 hover:text-gray-900"
             >
               {user ? 'Logout' : 'Login'}
