@@ -14,8 +14,8 @@ from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
-# Supabase client
-supabase: Client = create_client(settings.supabase_url, settings.supabase_anon_key)
+# Supabase client - using service role key for full permissions
+supabase: Client = create_client(settings.supabase_url, settings.supabase_service_role_key)
 
 # Router
 auth_router = APIRouter()
@@ -82,17 +82,26 @@ async def require_user(user: Optional[dict] = Depends(get_current_user)) -> dict
 async def register(data: UserRegister):
     """Register new user"""
     try:
+        logger.info(f"Registration attempt for: {data.email}")
+        
         # Register with Supabase
         response = supabase.auth.sign_up({
             "email": data.email,
             "password": data.password
         })
         
+        # Log response for debugging
+        logger.info(f"Registration response type: {type(response)}")
+        logger.info(f"Has user: {hasattr(response, 'user')}")
+        
         if not response.user:
+            logger.error("No user in registration response")
             raise HTTPException(status_code=400, detail="Registration failed")
         
         # Create token
         token = create_access_token(response.user.id, response.user.email)
+        
+        logger.info(f"Registration successful for: {response.user.email}")
         
         return Token(
             access_token=token,
@@ -101,7 +110,9 @@ async def register(data: UserRegister):
         )
         
     except Exception as e:
-        logger.error(f"Registration error: {e}")
+        logger.error(f"Registration error details: {str(e)}")
+        if "User already registered" in str(e):
+            raise HTTPException(status_code=409, detail="Email already registered")
         raise HTTPException(status_code=400, detail=str(e))
 
 
@@ -109,17 +120,26 @@ async def register(data: UserRegister):
 async def login(data: UserLogin):
     """Login user"""
     try:
+        logger.info(f"Login attempt for: {data.email}")
+        
         # Login with Supabase
         response = supabase.auth.sign_in_with_password({
             "email": data.email,
             "password": data.password
         })
         
+        # Log response for debugging
+        logger.info(f"Supabase response type: {type(response)}")
+        logger.info(f"Has user: {hasattr(response, 'user')}")
+        
         if not response.user:
+            logger.error("No user in response")
             raise HTTPException(status_code=401, detail="Invalid credentials")
         
         # Create token
         token = create_access_token(response.user.id, response.user.email)
+        
+        logger.info(f"Login successful for: {response.user.email}")
         
         return Token(
             access_token=token,
@@ -128,7 +148,9 @@ async def login(data: UserLogin):
         )
         
     except Exception as e:
-        logger.error(f"Login error: {e}")
+        logger.error(f"Login error details: {str(e)}")
+        if "Email not confirmed" in str(e):
+            raise HTTPException(status_code=403, detail="Please verify your email first")
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
 
