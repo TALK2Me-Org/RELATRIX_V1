@@ -142,7 +142,9 @@ class SimpleOrchestrator:
         """Get all available agents"""
         if not self._initialized:
             await self.initialize()
-        return await self.registry.get_all_agents()
+        # Convert list to dict
+        agents_list = await self.registry.get_all_agents()
+        return {agent.slug: agent for agent in agents_list}
     
     async def reload_agents(self) -> int:
         """Reload agents from database"""
