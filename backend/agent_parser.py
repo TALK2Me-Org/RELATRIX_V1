@@ -33,11 +33,10 @@ def remove_agent_json(text: str) -> str:
     Returns clean text without JSON markers
     """
     try:
-        # Remove all agent JSON patterns
+        # Remove all agent JSON patterns, preserving original spacing
         clean_text = re.sub(r'{\s*"agent"\s*:\s*"[^"]+"\s*}', '', text)
-        # Clean up extra whitespace
-        clean_text = ' '.join(clean_text.split())
-        return clean_text.strip()
+        # Don't modify spacing - just return the text without JSON
+        return clean_text
     except Exception as e:
         logger.error(f"Error removing agent JSON: {e}")
         return text

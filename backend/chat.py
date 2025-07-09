@@ -166,25 +166,24 @@ async def stream_chat(
                     full_response += content
                     chunk_buffer += content
                     
-                    # Check for agent switch in buffer
-                    if not new_agent:
-                        new_agent = extract_agent_slug(chunk_buffer)
-                        if new_agent:
-                            logger.info(f"[AGENT_SWITCH] JSON detection found: {new_agent}")
-                            # Remove JSON from buffer before sending
+                    # Check if buffer might contain JSON pattern
+                    if '{"agent"' in chunk_buffer:
+                        # Check for complete JSON pattern
+                        agent_match = extract_agent_slug(chunk_buffer)
+                        if agent_match:
+                            # Found complete JSON, extract agent and clean buffer
+                            if not new_agent:
+                                new_agent = agent_match
+                                logger.info(f"[AGENT_SWITCH] JSON detection found: {new_agent}")
+                            # Remove JSON from buffer
                             chunk_buffer = remove_agent_json(chunk_buffer)
-                    
-                    # Send clean chunks (might be empty after JSON removal)
-                    if chunk_buffer:
-                        # Check if buffer contains partial JSON pattern
-                        if '{"agent"' in chunk_buffer and not chunk_buffer.strip().endswith('}'):
-                            # Wait for complete JSON
+                        elif not chunk_buffer.strip().endswith('}'):
+                            # Partial JSON, wait for more content
                             continue
-                        
-                        # Clean any complete JSON patterns
-                        clean_content = remove_agent_json(chunk_buffer)
-                        if clean_content:
-                            yield f"data: {json.dumps({'chunk': clean_content})}\n\n"
+                    
+                    # Send whatever is in buffer (already cleaned if needed)
+                    if chunk_buffer:
+                        yield f"data: {json.dumps({'chunk': chunk_buffer})}\n\n"
                         chunk_buffer = ""
             
             # Clean response and save to memory
