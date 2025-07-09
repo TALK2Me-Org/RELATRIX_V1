@@ -11,7 +11,7 @@ import json
 from openai import AsyncOpenAI
 
 from database import get_db, Agent
-from auth import get_current_user
+from auth import get_current_user, security
 from memory_service import search_memories, add_memory
 from agent_parser import extract_agent_slug, remove_agent_json
 from config import settings
@@ -52,6 +52,44 @@ async def test_agent_switch():
 
 # OpenAI client
 openai = AsyncOpenAI(api_key=settings.openai_api_key)
+
+
+async def get_current_user_sse(
+    token: Optional[str] = Query(None, description="JWT token for SSE"),
+    credentials = Depends(security)
+) -> Optional[dict]:
+    """Get current user from JWT token - supports both header and query param"""
+    import jwt
+    from fastapi.security import HTTPAuthorizationCredentials
+    
+    # Try header first (standard auth)
+    if credentials:
+        try:
+            payload = jwt.decode(
+                credentials.credentials,
+                settings.jwt_secret_key,
+                algorithms=[settings.jwt_algorithm]
+            )
+            logger.info(f"[AUTH] User authenticated via header: {payload['email']}")
+            return {"id": payload["sub"], "email": payload["email"]}
+        except jwt.PyJWTError as e:
+            logger.error(f"[AUTH] Header token decode error: {e}")
+    
+    # Try query param (for SSE)
+    if token:
+        try:
+            payload = jwt.decode(
+                token,
+                settings.jwt_secret_key,
+                algorithms=[settings.jwt_algorithm]
+            )
+            logger.info(f"[AUTH] User authenticated via query param: {payload['email']}")
+            return {"id": payload["sub"], "email": payload["email"]}
+        except jwt.PyJWTError as e:
+            logger.error(f"[AUTH] Query token decode error: {e}")
+    
+    logger.warning("[AUTH] No valid authentication found")
+    return None
 
 
 async def should_switch_agent(message: str, current_agent: str) -> Optional[str]:
@@ -99,7 +137,7 @@ Reply with just the slug or "no"."""
 async def stream_chat(
     message: str = Query(..., description="User message"),
     agent_slug: str = Query("misunderstanding_protector", description="Current agent"),
-    user: Optional[dict] = Depends(get_current_user),
+    user: Optional[dict] = Depends(get_current_user_sse),
     db: Session = Depends(get_db)
 ):
     """
@@ -175,16 +213,24 @@ async def stream_chat(
                             if not new_agent:
                                 new_agent = agent_match
                                 logger.info(f"[AGENT_SWITCH] JSON detection found: {new_agent}")
+                                logger.debug(f"[AGENT_SWITCH] Original buffer: {chunk_buffer}")
                             # Remove JSON from buffer
                             chunk_buffer = remove_agent_json(chunk_buffer)
+                            logger.debug(f"[AGENT_SWITCH] Cleaned buffer: {chunk_buffer}")
                         elif not chunk_buffer.strip().endswith('}'):
                             # Partial JSON, wait for more content
+                            logger.debug(f"[AGENT_SWITCH] Partial JSON detected, waiting for more: {chunk_buffer}")
                             continue
                     
                     # Send whatever is in buffer (already cleaned if needed)
                     if chunk_buffer:
                         yield f"data: {json.dumps({'chunk': chunk_buffer})}\n\n"
                         chunk_buffer = ""
+            
+            # Log full response for debugging
+            logger.debug(f"[CHAT] Full response length: {len(full_response)}")
+            if new_agent:
+                logger.info(f"[CHAT] Agent switch detected in response: {new_agent}")
             
             # Clean response and save to memory
             clean_response = remove_agent_json(full_response)
