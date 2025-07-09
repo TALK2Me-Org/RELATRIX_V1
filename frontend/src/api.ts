@@ -82,15 +82,16 @@ export const streamChat = async (
   onChunk: (chunk: string) => void,
   onSwitch: (newAgent: string | null) => void
 ) => {
+  const token = localStorage.getItem('relatrix_token')
+  
   const params = new URLSearchParams({
     message,
     agent_slug: agentSlug
   })
-
-  const token = localStorage.getItem('relatrix_token')
-  const headers: any = {}
+  
+  // Add token to query params for SSE (EventSource doesn't support headers)
   if (token) {
-    headers.Authorization = `Bearer ${token}`
+    params.append('token', token)
   }
 
   const eventSource = new EventSource(
