@@ -83,7 +83,8 @@ Reply with just the slug or "no"."""
         result = response.choices[0].message.content.strip().lower()
         if result != "no" and result in [
             "emotional_vomit", "solution_finder", "conflict_solver",
-            "communication_simulator", "misunderstanding_protector"
+            "communication_simulator", "misunderstanding_protector",
+            "empathy_amplifier", "attachment_analyzer", "relationship_upgrader"
         ]:
             logger.info(f"Fallback switch to: {result}")
             return result
@@ -117,6 +118,9 @@ async def stream_chat(
             user_id = user["id"] if user else "anonymous"
             logger.info(f"[CHAT] Processing message for user: {user_id}, agent: {agent_slug}")
             logger.debug(f"[CHAT] User object: {user}")
+            logger.debug(f"[CHAT] User type: {type(user)}")
+            if user:
+                logger.debug(f"[CHAT] User keys: {user.keys() if hasattr(user, 'keys') else 'not a dict'}")
             
             # Log why user might be anonymous
             if user_id == "anonymous":
@@ -125,7 +129,9 @@ async def stream_chat(
             # Search memories
             memories = []
             if user_id != "anonymous":
+                logger.info(f"[CHAT] Searching memories for authenticated user: {user_id}")
                 memories = await search_memories(message, user_id)
+                logger.info(f"[CHAT] Memory search complete, found {len(memories)} memories")
             
             # Build messages for OpenAI
             messages = [
@@ -151,40 +157,61 @@ async def stream_chat(
             
             full_response = ""
             new_agent = None
+            chunk_buffer = ""
             
             # Stream chunks to client
             async for chunk in stream:
                 if chunk.choices and chunk.choices[0].delta.content:
                     content = chunk.choices[0].delta.content
                     full_response += content
+                    chunk_buffer += content
                     
-                    # Check for agent switch
+                    # Check for agent switch in buffer
                     if not new_agent:
-                        new_agent = extract_agent_slug(full_response)
+                        new_agent = extract_agent_slug(chunk_buffer)
                         if new_agent:
                             logger.info(f"[AGENT_SWITCH] JSON detection found: {new_agent}")
+                            # Remove JSON from buffer before sending
+                            chunk_buffer = remove_agent_json(chunk_buffer)
                     
-                    # Send chunk
-                    yield f"data: {json.dumps({'chunk': content})}\n\n"
+                    # Send clean chunks (might be empty after JSON removal)
+                    if chunk_buffer:
+                        # Check if buffer contains partial JSON pattern
+                        if '{"agent"' in chunk_buffer and not chunk_buffer.strip().endswith('}'):
+                            # Wait for complete JSON
+                            continue
+                        
+                        # Clean any complete JSON patterns
+                        clean_content = remove_agent_json(chunk_buffer)
+                        if clean_content:
+                            yield f"data: {json.dumps({'chunk': clean_content})}\n\n"
+                        chunk_buffer = ""
             
             # Clean response and save to memory
             clean_response = remove_agent_json(full_response)
             
             if user_id != "anonymous":
-                await add_memory(
+                logger.info(f"[CHAT] Saving memory for user: {user_id}")
+                memory_result = await add_memory(
                     messages=[
                         {"role": "user", "content": message},
                         {"role": "assistant", "content": clean_response}
                     ],
                     user_id=user_id
                 )
+                logger.info(f"[CHAT] Memory save result: {memory_result}")
             
-            # Check fallback if no agent switch detected
-            if not new_agent:
+            # Check fallback only if enabled and no JSON agent switch was detected
+            from main import system_settings
+            if not new_agent and system_settings.get("enable_fallback", True):
                 logger.info(f"[AGENT_SWITCH] No JSON detected, trying fallback GPT-3.5")
                 new_agent = await should_switch_agent(message, agent_slug)
                 if new_agent:
                     logger.info(f"[AGENT_SWITCH] Fallback suggested: {new_agent}")
+            elif not new_agent:
+                logger.info(f"[AGENT_SWITCH] Fallback disabled by system settings")
+            else:
+                logger.info(f"[AGENT_SWITCH] Skipping fallback - JSON detection already found: {new_agent}")
             
             # Send switch signal
             logger.info(f"[AGENT_SWITCH] Final decision: {new_agent or 'none'}")

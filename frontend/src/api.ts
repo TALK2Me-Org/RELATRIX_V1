@@ -64,6 +64,17 @@ export const updateAgent = async (slug: string, data: any) => {
   return response.data
 }
 
+// Settings endpoints
+export const getSettings = async () => {
+  const response = await api.get('/api/settings')
+  return response.data
+}
+
+export const updateSettings = async (settings: any) => {
+  const response = await api.post('/api/settings', settings)
+  return response.data
+}
+
 // Chat SSE streaming
 export const streamChat = async (
   message: string,
