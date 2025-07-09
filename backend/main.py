@@ -124,6 +124,23 @@ from chat import chat_router
 from agents import agents_router
 from database import seed_agents
 
+# System settings (in-memory for simplicity)
+system_settings = {
+    "enable_fallback": True
+}
+
+# Settings endpoints
+@app.get("/api/settings")
+async def get_settings():
+    return system_settings
+
+@app.post("/api/settings")
+async def update_settings(settings: dict):
+    global system_settings
+    system_settings.update(settings)
+    logger.info(f"System settings updated: {system_settings}")
+    return system_settings
+
 # Include routers
 app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
 app.include_router(chat_router, prefix="/api/chat", tags=["chat"])

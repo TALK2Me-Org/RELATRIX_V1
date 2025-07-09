@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getAgents, updateAgent } from './api'
+import { getAgents, updateAgent, getSettings, updateSettings } from './api'
 
 interface Agent {
   id: string
@@ -20,9 +20,12 @@ export default function Admin({ user, onLogout }: Props) {
   const [editedPrompt, setEditedPrompt] = useState('')
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [enableFallback, setEnableFallback] = useState(true)
+  const [settingsLoading, setSettingsLoading] = useState(false)
 
   useEffect(() => {
     loadAgents()
+    loadSettings()
   }, [])
 
   const loadAgents = async () => {
@@ -43,6 +46,28 @@ export default function Admin({ user, onLogout }: Props) {
   const handleSelectAgent = (agent: Agent) => {
     setSelectedAgent(agent)
     setEditedPrompt(agent.system_prompt)
+  }
+
+  const loadSettings = async () => {
+    try {
+      const settings = await getSettings()
+      setEnableFallback(settings.enable_fallback ?? true)
+    } catch (error) {
+      console.error('Failed to load settings:', error)
+    }
+  }
+
+  const handleSettingsUpdate = async () => {
+    setSettingsLoading(true)
+    try {
+      await updateSettings({ enable_fallback: enableFallback })
+      alert('Settings updated successfully!')
+    } catch (error) {
+      console.error('Failed to update settings:', error)
+      alert('Failed to update settings')
+    } finally {
+      setSettingsLoading(false)
+    }
   }
 
   const handleSave = async () => {
@@ -141,6 +166,37 @@ export default function Admin({ user, onLogout }: Props) {
             ) : (
               <p className="text-gray-500">Select an agent to edit</p>
             )}
+          </div>
+        </div>
+
+        {/* System Settings */}
+        <div className="mt-6 bg-white rounded-lg shadow p-4">
+          <h2 className="text-lg font-semibold mb-4">System Settings</h2>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="font-medium">Enable Fallback Agent Switching</label>
+                <p className="text-sm text-gray-500">
+                  When disabled, agents will only switch via JSON detection
+                </p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={enableFallback}
+                  onChange={(e) => setEnableFallback(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              </label>
+            </div>
+            <button
+              onClick={handleSettingsUpdate}
+              disabled={settingsLoading}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+            >
+              {settingsLoading ? 'Saving...' : 'Save Settings'}
+            </button>
           </div>
         </div>
       </div>
