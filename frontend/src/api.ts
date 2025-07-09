@@ -101,7 +101,10 @@ export const streamChat = async (
 
   return new Promise((resolve, reject) => {
     eventSource.onmessage = (event) => {
+      console.log('[SSE] Received:', event.data)
+      
       if (event.data === '[DONE]') {
+        console.log('[SSE] Stream complete, closing connection')
         eventSource.close()
         resolve(void 0)
         return
@@ -121,6 +124,7 @@ export const streamChat = async (
         }
 
         if (data.switch) {
+          console.log('[SSE] Agent switch:', data.switch)
           onSwitch(data.switch === 'none' ? null : data.switch)
         }
       } catch (e) {
@@ -129,8 +133,21 @@ export const streamChat = async (
     }
 
     eventSource.onerror = (error) => {
+      console.error('[SSE] Connection error:', error)
       eventSource.close()
       reject(error)
     }
+    
+    // Add timeout to prevent hanging
+    const timeout = setTimeout(() => {
+      console.error('[SSE] Timeout - closing connection')
+      eventSource.close()
+      reject(new Error('Stream timeout'))
+    }, 30000) // 30 seconds timeout
+    
+    // Clear timeout on successful completion
+    eventSource.addEventListener('close', () => {
+      clearTimeout(timeout)
+    })
   })
 }
