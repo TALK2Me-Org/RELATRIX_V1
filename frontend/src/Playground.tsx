@@ -10,6 +10,8 @@ interface Agent {
   slug: string
   name: string
   system_prompt: string
+  model?: string
+  temperature?: number
 }
 
 interface Message {
@@ -71,14 +73,25 @@ export default function Playground() {
       
       const data = await response.json()
       console.log('[PLAYGROUND] Loaded agents:', data)
+      console.log('[PLAYGROUND] Setting agents state with', data.length, 'agents')
       setAgents(data)
       
       if (data.length > 0) {
+        console.log('[PLAYGROUND] Setting selected agent to:', data[0])
         setSelectedAgent(data[0])
         setSystemPrompt(data[0].system_prompt)
+        // Also set model and temperature if available
+        if (data[0].model) {
+          setSettings(prev => ({...prev, model: data[0].model}))
+        }
+        if (data[0].temperature !== undefined) {
+          setSettings(prev => ({...prev, temperature: data[0].temperature}))
+        }
       }
     } catch (error) {
       console.error('[PLAYGROUND] Failed to load agents:', error)
+      // Fallback to empty array to prevent undefined errors
+      setAgents([])
     }
   }
 
@@ -102,6 +115,13 @@ export default function Playground() {
     if (agent) {
       setSelectedAgent(agent)
       setSystemPrompt(agent.system_prompt)
+      // Also update model and temperature if agent has them
+      if (agent.model) {
+        setSettings(prev => ({...prev, model: agent.model!}))
+      }
+      if (agent.temperature !== undefined) {
+        setSettings(prev => ({...prev, temperature: agent.temperature!}))
+      }
     }
   }
 
@@ -203,12 +223,17 @@ export default function Playground() {
                 value={selectedAgent?.slug || ''}
                 onChange={(e) => handleAgentChange(e.target.value)}
                 className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={agents.length === 0}
               >
-                {agents.map(agent => (
-                  <option key={agent.slug} value={agent.slug}>
-                    {agent.name}
-                  </option>
-                ))}
+                {agents.length === 0 ? (
+                  <option value="">Loading agents...</option>
+                ) : (
+                  agents.map(agent => (
+                    <option key={agent.slug} value={agent.slug}>
+                      {agent.name}
+                    </option>
+                  ))
+                )}
               </select>
             </div>
 
