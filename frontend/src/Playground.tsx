@@ -274,7 +274,7 @@ export default function Playground() {
               <label className="flex items-center justify-between">
                 <span className="flex items-center text-sm">
                   Show JSON Detection
-                  <HelpIcon tooltip="Wizualnie zaznacza fragmenty JSON (np. {\"agent\": \"nazwa\"}) w odpowiedziach na żółto." />
+                  <HelpIcon tooltip='Wizualnie zaznacza fragmenty JSON (np. {"agent": "nazwa"}) w odpowiedziach na żółto.' />
                 </span>
                 <input
                   type="checkbox"
