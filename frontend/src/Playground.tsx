@@ -28,6 +28,7 @@ interface PlaygroundSettings {
   temperature: number
   show_json: boolean
   enable_fallback: boolean
+  auto_switch: boolean
 }
 
 interface Model {
@@ -52,12 +53,19 @@ export default function Playground() {
   const [totalTokens, setTotalTokens] = useState(0)
   const [streamingContent, setStreamingContent] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(() => {
+    return localStorage.getItem('playground_leftPanel') === 'collapsed'
+  })
+  const [rightPanelCollapsed, setRightPanelCollapsed] = useState(() => {
+    return localStorage.getItem('playground_rightPanel') === 'collapsed'
+  })
   
   const [settings, setSettings] = useState<PlaygroundSettings>({
     model: 'gpt-4',
     temperature: 0.7,
     show_json: true,
-    enable_fallback: true
+    enable_fallback: true,
+    auto_switch: false
   })
 
   useEffect(() => {
@@ -126,6 +134,18 @@ export default function Playground() {
     scrollToBottom()
   }, [messages, streamingContent])
 
+  const toggleLeftPanel = () => {
+    const newState = !leftPanelCollapsed
+    setLeftPanelCollapsed(newState)
+    localStorage.setItem('playground_leftPanel', newState ? 'collapsed' : 'expanded')
+  }
+
+  const toggleRightPanel = () => {
+    const newState = !rightPanelCollapsed
+    setRightPanelCollapsed(newState)
+    localStorage.setItem('playground_rightPanel', newState ? 'collapsed' : 'expanded')
+  }
+
   const handleSend = async () => {
     if (!input.trim() || !selectedAgent || loading) return
 
@@ -182,6 +202,15 @@ export default function Playground() {
           setStreamingContent('')
           setLoading(false)
           setTotalTokens(prev => prev + msgTokens)
+          
+          // Auto-switch agent if enabled and detected
+          if (settings.auto_switch && agentSwitch && agentSwitch !== selectedAgent?.slug) {
+            const newAgent = agents.find(a => a.slug === agentSwitch)
+            if (newAgent) {
+              handleAgentChange(agentSwitch)
+            }
+          }
+          
           return
         }
 
@@ -289,8 +318,28 @@ export default function Playground() {
 
         <div className="flex h-[calc(100vh-60px)]">
         {/* Left Column - Configuration */}
-        <div className="w-80 bg-white border-r p-4 overflow-y-auto">
-          <div className="space-y-4">
+        <div className={`bg-white border-r overflow-y-auto transition-all duration-300 ${
+          leftPanelCollapsed ? 'w-12' : 'w-80'
+        }`}>
+          {/* Toggle button */}
+          <div className="flex justify-end p-2 border-b">
+            <button
+              onClick={toggleLeftPanel}
+              className="p-1 hover:bg-gray-100 rounded transition-colors"
+              title={leftPanelCollapsed ? 'Expand panel' : 'Collapse panel'}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  strokeWidth={2} 
+                  d={leftPanelCollapsed ? 'M9 5l7 7-7 7' : 'M15 19l-7-7 7-7'}
+                />
+              </svg>
+            </button>
+          </div>
+          
+          <div className={`p-4 space-y-4 ${leftPanelCollapsed ? 'hidden' : ''}`}>
             {/* Agent Selection */}
             <div>
               <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
@@ -415,6 +464,19 @@ export default function Playground() {
                   className="rounded"
                 />
               </label>
+
+              <label className="flex items-center justify-between">
+                <span className="flex items-center text-sm">
+                  Auto-switch Agents
+                  <HelpIcon tooltip="Automatycznie przełącza agenta gdy wykryje JSON w odpowiedzi" />
+                </span>
+                <input
+                  type="checkbox"
+                  checked={settings.auto_switch}
+                  onChange={(e) => setSettings({...settings, auto_switch: e.target.checked})}
+                  className="rounded"
+                />
+              </label>
             </div>
           </div>
         </div>
@@ -508,10 +570,32 @@ export default function Playground() {
         </div>
 
         {/* Right Column - Debug Info */}
-        <div className="w-96 bg-white border-l">
-          {/* Tabs */}
-          <div className="border-b">
-            <div className="flex">
+        <div className={`bg-white border-l transition-all duration-300 ${
+          rightPanelCollapsed ? 'w-12' : 'w-96'
+        }`}>
+          {/* Toggle button */}
+          <div className="flex justify-start p-2 border-b">
+            <button
+              onClick={toggleRightPanel}
+              className="p-1 hover:bg-gray-100 rounded transition-colors"
+              title={rightPanelCollapsed ? 'Expand panel' : 'Collapse panel'}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  strokeWidth={2} 
+                  d={rightPanelCollapsed ? 'M15 19l-7-7 7-7' : 'M9 5l7 7-7 7'}
+                />
+              </svg>
+            </button>
+          </div>
+          
+          {/* Content - hidden when collapsed */}
+          <div className={rightPanelCollapsed ? 'hidden' : ''}>
+            {/* Tabs */}
+            <div className="border-b">
+              <div className="flex">
               <button
                 onClick={() => setActiveTab('analysis')}
                 className={`flex-1 px-4 py-3 text-sm font-medium transition-colors flex items-center justify-center gap-1 ${
@@ -619,6 +703,7 @@ export default function Playground() {
                 )}
               </>
             )}
+          </div>
           </div>
         </div>
       </div>
