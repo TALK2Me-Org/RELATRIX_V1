@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { HelpIcon } from './components/Tooltip'
 import Modal from './components/Modal'
 import { testPlayground } from './PlaygroundAPI'
+import { getAgents } from './api'
+import AdminSidebar from './components/AdminSidebar'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
@@ -63,21 +65,10 @@ export default function Playground() {
 
   const loadAgents = async () => {
     try {
-      console.log('[PLAYGROUND] Loading agents from:', `${API_URL}/api/agents`)
-      const response = await fetch(`${API_URL}/api/agents`)
-      console.log('[PLAYGROUND] Response status:', response.status)
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-      
-      const data = await response.json()
-      console.log('[PLAYGROUND] Loaded agents:', data)
-      console.log('[PLAYGROUND] Setting agents state with', data.length, 'agents')
+      const data = await getAgents()
       setAgents(data)
       
       if (data.length > 0) {
-        console.log('[PLAYGROUND] Setting selected agent to:', data[0])
         setSelectedAgent(data[0])
         setSystemPrompt(data[0].system_prompt)
         // Also set model and temperature if available
@@ -191,25 +182,31 @@ export default function Playground() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-full px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-semibold">Agent Prompt Playground</h1>
-            <HelpIcon tooltip="Środowisko testowe do eksperymentowania z promptami. Zmiany nie są zapisywane w bazie danych." />
-          </div>
-          <button
-            onClick={() => navigate('/admin')}
-            className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors flex items-center gap-1"
-          >
-            ← Back to Admin
-            <HelpIcon tooltip="Powrót do panelu admina" />
-          </button>
-        </div>
-      </div>
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Sidebar */}
+      <AdminSidebar 
+        activeItem="playground"
+        onItemClick={(item) => {
+          if (item === 'playground') return
+          if (item === 'agents' || item === 'dashboard' || item === 'settings') {
+            navigate('/admin')
+          }
+        }}
+      />
 
-      <div className="flex h-[calc(100vh-60px)]">
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col">
+        {/* Header */}
+        <div className="bg-white shadow-sm border-b">
+          <div className="px-6 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-semibold">Agent Prompt Playground</h1>
+              <HelpIcon tooltip="Środowisko testowe do eksperymentowania z promptami. Zmiany nie są zapisywane w bazie danych." />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex h-[calc(100vh-60px)]">
         {/* Left Column - Configuration */}
         <div className="w-80 bg-white border-r p-4 overflow-y-auto">
           <div className="space-y-4">
@@ -565,6 +562,7 @@ export default function Playground() {
           </div>
         </div>
       </Modal>
+      </div>
     </div>
   )
 }
