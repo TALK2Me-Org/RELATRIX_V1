@@ -999,6 +999,7 @@ export default function Playground() {
           </div>
         </div>
       </div>
+      </div>
 
       {/* System Prompt Modal */}
       <Modal
