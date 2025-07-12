@@ -71,11 +71,13 @@ railway run -s backend env
 - **Memory**: Mem0 Cloud API
 - **AI**: OpenAI GPT-4
 - **Cache**: Redis
+- **Agents**: 7 agentów (misunderstanding_protector, emotional_vomit, solution_finder, conflict_solver, communication_simulator, relationship_upgrader, breakthrough_manager)
 
 ### Important Notes
 - Frontend runs on port 8080 in Railway (not 3000)
 - Backend needs proper DATABASE_URL to connect to PostgreSQL
 - Agents are loaded from database, falls back to defaults if connection fails
+- System ma 7 agentów (było 8, usunięto empathy_amplifier i attachment_analyzer)
 
 ## Ważne pliki do śledzenia
 
