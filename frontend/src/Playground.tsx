@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { HelpIcon } from './components/Tooltip'
 import Modal from './components/Modal'
@@ -50,6 +50,9 @@ export default function Playground() {
   const [isPromptModalOpen, setIsPromptModalOpen] = useState(false)
   const [tempPrompt, setTempPrompt] = useState('')
   const [models, setModels] = useState<Model[]>([])
+  const [totalTokens, setTotalTokens] = useState(0)
+  const [streamingContent, setStreamingContent] = useState('')
+  const messagesEndRef = useRef<HTMLDivElement>(null)
   
   const [settings, setSettings] = useState<PlaygroundSettings>({
     model: 'gpt-4',
@@ -116,6 +119,14 @@ export default function Playground() {
     }
   }
 
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  useEffect(() => {
+    scrollToBottom()
+  }, [messages, streamingContent])
+
   const handleSend = async () => {
     if (!input.trim() || !selectedAgent || loading) return
 
@@ -123,32 +134,102 @@ export default function Playground() {
     setMessages(prev => [...prev, userMessage])
     setInput('')
     setLoading(true)
+    setStreamingContent('')
 
     try {
-      const response = await testPlayground({
+      // Build history for context
+      const history = messages.map(msg => ({
+        role: msg.role,
+        content: msg.content
+      }))
+
+      const params = new URLSearchParams({
         agent_slug: selectedAgent.slug,
         system_prompt: systemPrompt,
         message: input,
-        settings
+        history: JSON.stringify(history),
+        model: settings.model,
+        temperature: settings.temperature.toString()
       })
 
-      const assistantMessage: Message = {
-        role: 'assistant',
-        content: response.clean_response,
-        raw_content: response.raw_response,
-        detected_json: response.detected_json || undefined,
-        debug_info: response.debug_info
+      const eventSource = new EventSource(`${API_URL}/api/playground/sse?${params}`)
+      let fullResponse = ''
+      let rawResponse = ''
+      let detectedJson: string | null = null
+      let agentSwitch: string | null = null
+      let msgTokens = 0
+
+      eventSource.onmessage = (event) => {
+        if (event.data === '[DONE]') {
+          eventSource.close()
+          
+          const assistantMessage: Message = {
+            role: 'assistant',
+            content: fullResponse,
+            raw_content: rawResponse || fullResponse,
+            detected_json: detectedJson || undefined,
+            debug_info: {
+              detected_json: detectedJson,
+              agent_switch: agentSwitch,
+              token_count: msgTokens,
+              processing_time: 'streaming',
+              model_used: settings.model,
+              fallback_triggered: false
+            }
+          }
+
+          setMessages(prev => [...prev, assistantMessage])
+          setCurrentDebug(assistantMessage.debug_info)
+          setStreamingContent('')
+          setLoading(false)
+          setTotalTokens(prev => prev + msgTokens)
+          return
+        }
+
+        try {
+          const data = JSON.parse(event.data)
+          
+          if (data.error) {
+            throw new Error(data.error)
+          }
+
+          if (data.chunk) {
+            fullResponse += data.chunk
+            rawResponse += data.chunk
+            setStreamingContent(fullResponse)
+            msgTokens += data.tokens || 0
+          }
+
+          if (data.detected_json) {
+            detectedJson = data.detected_json
+            agentSwitch = data.agent_switch
+          }
+
+          if (data.total_tokens) {
+            msgTokens = data.total_tokens
+          }
+        } catch (e) {
+          console.error('Parse error:', e)
+        }
       }
 
-      setMessages(prev => [...prev, assistantMessage])
-      setCurrentDebug(response.debug_info)
+      eventSource.onerror = (error) => {
+        console.error('SSE error:', error)
+        eventSource.close()
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: 'Error: Connection failed'
+        }])
+        setStreamingContent('')
+        setLoading(false)
+      }
+
     } catch (error) {
       console.error('Playground error:', error)
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: 'Error: Failed to get response'
       }])
-    } finally {
       setLoading(false)
     }
   }
@@ -156,6 +237,7 @@ export default function Playground() {
   const clearChat = () => {
     setMessages([])
     setCurrentDebug(null)
+    setTotalTokens(0)
   }
 
   const highlightJSON = (content: string) => {
@@ -342,7 +424,14 @@ export default function Playground() {
         <div className="flex-1 flex flex-col">
           {/* Chat Header */}
           <div className="bg-white border-b px-4 py-3 flex items-center justify-between">
-            <h2 className="font-medium">Test Conversation</h2>
+            <div className="flex items-center gap-4">
+              <h2 className="font-medium">Test Conversation</h2>
+              <div className="flex items-center gap-1 text-sm text-gray-600">
+                <span>Total tokens:</span>
+                <span className="font-mono font-medium">{totalTokens}</span>
+                <HelpIcon tooltip="Przybliżona liczba tokenów zużytych w tej sesji" />
+              </div>
+            </div>
             <button
               onClick={clearChat}
               className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors flex items-center gap-1"
@@ -362,14 +451,21 @@ export default function Playground() {
                     : 'bg-gray-100 text-gray-900'
                 }`}>
                   {msg.role === 'assistant' && settings.show_json ? (
-                    <div>{highlightJSON(msg.raw_content || msg.content)}</div>
+                    <div className="whitespace-pre-wrap">{highlightJSON(msg.raw_content || msg.content)}</div>
                   ) : (
-                    <div>{msg.content}</div>
+                    <div className="whitespace-pre-wrap">{msg.content}</div>
                   )}
                 </div>
               </div>
             ))}
-            {loading && (
+            {loading && streamingContent && (
+              <div className="flex justify-start">
+                <div className="bg-gray-100 px-4 py-2 rounded-lg text-gray-900 max-w-2xl">
+                  <div className="whitespace-pre-wrap">{streamingContent}</div>
+                </div>
+              </div>
+            )}
+            {loading && !streamingContent && (
               <div className="flex justify-start">
                 <div className="bg-gray-100 px-4 py-2 rounded-lg">
                   <div className="flex items-center gap-2">
@@ -380,6 +476,7 @@ export default function Playground() {
                 </div>
               </div>
             )}
+            <div ref={messagesEndRef} />
           </div>
 
           {/* Input */}

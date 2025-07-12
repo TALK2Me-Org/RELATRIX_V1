@@ -2,12 +2,15 @@
 Playground endpoint for testing agent prompts
 Completely standalone - doesn't affect production
 """
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 import time
 import logging
+import json
+import asyncio
 from openai import AsyncOpenAI
 
 from database import get_db
@@ -28,6 +31,11 @@ class PlaygroundSettings(BaseModel):
     temperature: float = 0.7
     show_json: bool = True
     enable_fallback: bool = True
+
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
 
 
 class PlaygroundRequest(BaseModel):
@@ -191,3 +199,83 @@ async def playground_chat(
                 "processing_time": f"{(time.time() - start_time):.2f}s"
             }
         )
+
+
+@playground_router.get("/sse")
+async def playground_sse(
+    agent_slug: str = Query(...),
+    system_prompt: str = Query(...),
+    message: str = Query(...),
+    history: str = Query("[]"),  # JSON array of messages
+    model: str = Query("gpt-4"),
+    temperature: float = Query(0.7),
+    db: Session = Depends(get_db)
+):
+    """
+    SSE endpoint for streaming playground responses
+    """
+    async def generate():
+        try:
+            # Parse history
+            message_history = json.loads(history)
+            
+            # Build messages with system prompt and history
+            messages = [{"role": "system", "content": system_prompt}]
+            messages.extend(message_history)
+            messages.append({"role": "user", "content": message})
+            
+            logger.info(f"[PLAYGROUND SSE] Agent: {agent_slug}, Model: {model}")
+            logger.info(f"[PLAYGROUND SSE] Message count: {len(messages)}")
+            
+            # Stream from OpenAI
+            stream = await openai.chat.completions.create(
+                model=model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=1000,
+                stream=True
+            )
+            
+            full_response = ""
+            total_tokens = 0
+            
+            async for chunk in stream:
+                if chunk.choices[0].delta.content:
+                    content = chunk.choices[0].delta.content
+                    full_response += content
+                    
+                    # Send chunk
+                    data = {
+                        "chunk": content,
+                        "tokens": len(content.split()) // 4  # Approximate
+                    }
+                    yield f"data: {json.dumps(data)}\n\n"
+            
+            # Detect JSON in full response
+            detected_json = extract_agent_slug(full_response)
+            
+            # Send final metadata
+            final_data = {
+                "detected_json": f'{{"agent": "{detected_json}"}}' if detected_json else None,
+                "agent_switch": detected_json,
+                "total_tokens": len(full_response.split()) // 4  # Approximate
+            }
+            yield f"data: {json.dumps(final_data)}\n\n"
+            
+            # Send done signal
+            yield f"data: [DONE]\n\n"
+            
+        except Exception as e:
+            logger.error(f"[PLAYGROUND SSE] Error: {e}")
+            error_data = {"error": str(e)}
+            yield f"data: {json.dumps(error_data)}\n\n"
+    
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"
+        }
+    )
