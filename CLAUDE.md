@@ -5,6 +5,20 @@ This file contains important information for Claude to remember across sessions.
 ## Pracuję z Nati! 👋
 Nati (Natalia Rybarczyk) jest vibecoderką i potrzebuje prostych wyjaśnień technicznych.
 
+## WAŻNE: Praca zespołowa z Maciejem
+- **ZAWSZE rozpocznij sesję od `git pull`** - Maciej może wprowadzać zmiany ze swojego komputera
+- Po każdej sesji pushuj zmiany na git
+- Workflow:
+  ```bash
+  # Na początku każdej sesji:
+  git pull origin main
+  
+  # Po zakończeniu pracy:
+  git add -A
+  git commit -m "feat: opis zmian"
+  git push origin main
+  ```
+
 ## Railway CLI Configuration
 
 ### Authentication
