@@ -38,27 +38,79 @@
 - SSE streaming, agent switching przez JSON detection
 - Deployment na Railway działa
 
-### 🚨 Task 0.1: Debug Mem0 Integration [HIGH]
-**Problem:** Brak widocznej aktywności Mem0 w logach
-**Polecenie dla Claude Code:**
-```
-1. Dodać więcej logowania do memory_service.py
-2. Sprawdzić czy user_id jest poprawnie przekazywany
-3. Przetestować bezpośrednio API Mem0
-4. Zweryfikować w Mem0 dashboard czy dane są zapisywane
-```
-**Oczekiwany rezultat:** Potwierdzenie działania Mem0, widoczne logi
+### 🚨 Task 0.0: Fix Fallback Always Running Bug [CRITICAL ROOT CAUSE - 2025-07-10]
+**Problem:** Fallback ZAWSZE się wykonuje, nawet gdy agenci zwracają JSON w odpowiedzi
+**Przyczyna techniczna:**
+- JSON detection sprawdza tylko `chunk_buffer` podczas streamingu
+- `chunk_buffer` jest czyszczony po każdym chunk (linia 228 w chat.py)
+- Jeśli JSON pojawi się między chunkami lub na końcu - nie zostanie wykryty
+- System ZAWSZE uruchamia fallback GPT-3.5 (1-2 sekundy delay)
 
-### 🚨 Task 0.2: Test Agent Switching [HIGH]
-**Problem:** Agent switching nie przetestowane
 **Polecenie dla Claude Code:**
 ```
-1. Przetestować różne prompty wymuszające zmianę agenta
-2. Sprawdzić czy JSON {"agent": "slug"} jest poprawnie parsowany
-3. Przetestować fallback do GPT-3.5
-4. Dodać więcej logów do agent_parser.py
+1. W chat.py po zakończeniu streamingu (po linii 235):
+   - Sprawdzić extract_agent_slug(full_response) jeśli new_agent jest None
+   - Tylko wtedy uruchamiać fallback gdy NAPRAWDĘ nie ma JSON w całej odpowiedzi
+2. Dodać logi pokazujące kiedy fallback jest pomijany bo znaleziono JSON
+3. Upewnić się że JSON detection działa dla całej odpowiedzi, nie tylko chunków
+4. Rozważyć usunięcie chunk-based JSON detection (zbyt skomplikowane)
 ```
-**Oczekiwany rezultat:** Działające przełączanie agentów
+
+**Ten bug powoduje:**
+- Input blocking (czeka na niepotrzebny fallback)
+- Wolne odpowiedzi (dodatkowe 1-2 sekundy)
+- Marnowanie tokenów (niepotrzebne GPT-3.5)
+- Złe UX (wszystko wolne)
+
+**Oczekiwany rezultat:** Fallback uruchamia się TYLKO gdy w całej odpowiedzi nie ma JSON
+
+### 🚨 Task 0.1: Fix Input Blocking Bug [RESOLVED BY 0.0 - 2025-07-10]
+**Problem:** Input jest zablokowany na 3-5 sekund po zakończeniu streamingu
+**ROZWIĄZANIE:** Problem wynikał z niepotrzebnego fallbacku (Task 0.0)
+**Status:** Powinien się rozwiązać automatycznie po naprawie Task 0.0
+**Jeśli problem pozostanie:**
+```
+1. Sprawdzić logi [SSE] w konsoli przeglądarki
+2. Zidentyfikować delay między "[SSE] Agent switch" a "[SSE] Stream complete"
+3. Sprawdzić czy nie ma dodatkowych timeoutów
+```
+**Oczekiwany rezultat:** Input natychmiast dostępny po zakończeniu odpowiedzi
+
+### 🚨 Task 0.2: Verify Agent JSON Output [HIGH - 2025-07-10]
+**Problem:** Niepewność czy agenci poprawnie zwracają JSON
+**UWAGA:** User zaktualizował prompty żeby ZAWSZE zwracały JSON (własny slug lub nowy)
+**Polecenie dla Claude Code:**
+```
+1. Dodać logowanie pełnej odpowiedzi agenta:
+   logger.info(f"[AGENT_RESPONSE] Last 200 chars: {full_response[-200:]}")
+2. Sprawdzić czy JSON jest w odpowiedzi:
+   logger.info(f"[AGENT_RESPONSE] Contains JSON: {'{"agent"' in full_response}")
+3. Jeśli agenci nie zwracają JSON mimo nowych promptów:
+   - Rozważyć system promptu z przykładami
+   - Może model nie rozumie instrukcji?
+```
+**Oczekiwany rezultat:** Pewność że agenci zwracają JSON zgodnie z promptami
+
+### 🚨 Task 0.3: Verify Mem0 Integration [MEDIUM - 2025-07-10]
+**Problem:** Brak pewności czy Mem0 działa
+**Polecenie dla Claude Code:**
+```
+1. Utworzyć endpoint /api/test-mem0 z hardcoded user_id
+2. Wykonać test save i retrieve z known data
+3. Sprawdzić response structure z Mem0
+4. Dodać więcej logów do memory_service.py
+5. Porównać user_id format (string vs UUID)
+```
+**Oczekiwany rezultat:** Potwierdzenie że Mem0 zapisuje i odczytuje dane
+
+### ✅ Task 0.4: Add All Agents [COMPLETED - 2025-07-09]
+**Status:** Dodano wszystkie 8 agentów do systemu
+
+### ✅ Task 0.5: Fix JSON Visibility [COMPLETED - 2025-07-09]
+**Status:** JSON jest usuwany przed wysłaniem do UI
+
+### ✅ Task 0.6: Add Fallback Toggle [COMPLETED - 2025-07-09]
+**Status:** Admin panel ma checkbox do kontroli fallback
 
 ### ✅ Task 0.3: Railway Optimization [COMPLETED 2025-07-08]
 - Zmieniono Dockerfile → Nixpacks

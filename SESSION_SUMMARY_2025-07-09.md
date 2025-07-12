@@ -1,12 +1,81 @@
 # Podsumowanie Sesji RELATRIX - 2025-07-09
 
-## ✅ Co naprawiliśmy:
-1. **UUID Error** - Pydantic nie konwertował UUID na string (naprawione field_validator)
-2. **Dodatkowe logi** - [DB], [MEM0], [AGENT_SWITCH], [CHAT] dla debugowania
-3. **Health check** - `/health/detailed` pokazuje status wszystkich serwisów
-4. **Panel admina** - działa, ale brak edycji nazwy agenta (tylko system_prompt)
+## ✅ PEŁNA LISTA DZISIEJSZYCH OSIĄGNIĘĆ:
+
+### Poranne naprawy (10:00-12:00):
+1. **Naprawiono widoczność JSON w chat UI**
+   - JSON agenta {"agent": "slug"} był widoczny dla użytkownika
+   - Dodano remove_agent_json() który czyści odpowiedź przed wysłaniem
+   - UI teraz pokazuje tylko czystą odpowiedź agenta
+
+2. **Naprawiono podwójne przełączanie agentów**
+   - Agent switching wykonywał się 2x na jedną wiadomość
+   - Usunięto duplikację w process_message()
+   - Teraz: detect JSON → remove JSON → switch agent (tylko raz)
+
+### Popołudniowe ulepszenia (13:00-17:00):
+3. **Dodano wszystkie 8 agentów do systemu**
+   - emotional_vomit - do wygadania się
+   - conflict_solver - mediator konfliktów
+   - solution_finder - praktyczne rozwiązania
+   - communication_simulator - trening rozmów
+   - relationship_upgrader - ulepszanie relacji
+   - breakthrough_manager - wsparcie w kryzysie
+   - personal_growth_guide - rozwój osobisty
+   - Każdy ma swój system prompt i transfer triggers
+
+4. **Global fallback toggle w admin panel**
+   - Checkbox do włączania/wyłączania GPT-3.5 fallback
+   - Zapisuje preferencje w localStorage
+   - Backend respektuje ustawienie (enable_fallback w request)
+
+5. **Naprawiono autoryzację SSE dla Mem0**
+   - EventSource nie wspiera headers, więc token idzie przez query param
+   - Backend wyciąga user_id z tokenu w query string
+   - Mem0 może teraz działać dla zalogowanych użytkowników
+
+### Wieczorne debugowanie (16:00-23:00):
+6. **UUID Error Fix**
+   - Pydantic nie konwertował UUID na string automatycznie
+   - Dodano field_validator do AgentRead model
+   - Naprawiono "Network Error" w admin panel
+
+7. **Rozbudowane logowanie**
+   - [DB] - operacje bazodanowe
+   - [MEM0] - pamięć i kontekst
+   - [AGENT_SWITCH] - przełączanie agentów
+   - [CHAT] - flow konwersacji
+   - DEBUG level dla szczegółów
+   - Test endpoint /api/chat/test-switch
+
+8. **UI/UX improvements**
+   - Naprawiono spacing i padding w chat
+   - Lepsze wyświetlanie długich wiadomości
+   - Responsywny design
 
 ## ❌ Co NIE działa:
+
+### 🚨 CRITICAL BUG DISCOVERY (23:45) - ROOT CAUSE ZNALEZIONY!
+
+**Problem:** Fallback ZAWSZE się wykonuje, nawet gdy agenci zwracają JSON!
+**Przyczyna:** JSON detection sprawdza tylko `chunk_buffer` podczas streamingu, nie `full_response` po zakończeniu
+- `chunk_buffer` jest czyszczony po każdym chunk (linia 228)
+- Jeśli JSON pojawi się na końcu odpowiedzi lub między chunkami - nie zostanie wykryty
+- System ZAWSZE uruchamia fallback GPT-3.5 (1-2 sekundy delay)
+
+**To powoduje:**
+1. **Input blocking bug** - czeka na niepotrzebny fallback
+2. **Wolne odpowiedzi** - dodatkowe 1-2 sekundy na każdą wiadomość
+3. **Marnowanie tokenów** - niepotrzebne wywołania GPT-3.5
+4. **Złe UX** - wszystko wydaje się wolne i nieresponsywne
+
+**Dowód z kodu (chat.py):**
+```python
+# Linia 251-259: Fallback ZAWSZE się wykonuje jeśli new_agent jest None
+if not new_agent and system_settings.get("enable_fallback", True):
+    logger.info(f"[AGENT_SWITCH] No JSON detected, trying fallback GPT-3.5")
+    new_agent = await should_switch_agent(message, agent_slug)
+```
 
 ### 1. **Mem0 - Brak komunikacji**
 - API key jest, client się inicjalizuje
@@ -54,30 +123,76 @@ When the user seems ready to move forward:
 - If they need to understand their partner → add: {"agent": "misunderstanding_protector"}
 ```
 
-## 📝 Do sprawdzenia w następnej sesji:
+### 3. **Input blocking bug** 🐛
+- Po zakończeniu streamingu input jest zablokowany na 3-5 sekund
+- User nie może pisać kolejnej wiadomości
+- Prawdopodobnie problem z EventSource cleanup lub state management
 
-### 1. **Dlaczego user jest "anonymous"?**
-- EventSource (SSE) nie wysyła nagłówka Authorization
-- Backend widzi wszystkich jako niezalogowanych
-- Mem0 nie działa dla anonymous
+### 4. **Fallback za często się włącza**
+- Mimo że agenci mają instrukcje w promptach
+- GPT-3.5 detection włącza się niepotrzebnie
+- Może prompty są zbyt skomplikowane?
 
-### 2. **Czy agent switching działa?**
-- Przetestować ręcznie różne prompty
-- Sprawdzić logi [AGENT_SWITCH]
-- Może agenci nie dodają JSON poprawnie?
+## 📋 PLAN NA JUTRO (2025-07-10):
 
-### 3. **Mem0 - czy w ogóle działa?**
-- Sprawdzić Mem0 dashboard online
-- Może problem z API key?
-- Może version="v2" nie jest wspierane?
+### Priorytety:
+1. **🚨 CRITICAL: Naprawić fallback bug (ROOT CAUSE)**
+   - Fallback ZAWSZE się wykonuje, nawet gdy JSON jest w odpowiedzi
+   - To powoduje input blocking, wolne odpowiedzi, marnowanie tokenów
+   - FIX: Sprawdzać `full_response` po streamingu, nie tylko `chunk_buffer`
+   - Tylko wtedy uruchamiać fallback gdy NAPRAWDĘ nie ma JSON
+   
+   **Konkretna zmiana w chat.py (po linii 230):**
+   ```python
+   # Check if JSON was in full response (not just buffer)
+   if not new_agent:
+       new_agent = extract_agent_slug(full_response)
+       if new_agent:
+           logger.info(f"[AGENT_SWITCH] Found JSON in full response: {new_agent}")
+   ```
 
-## 🎯 Proste rozwiązania na przyszłość:
+2. **HIGH: Input blocking (rozwiąże się samo po #1)**
+   - Problem wynika z czekania na niepotrzebny fallback
+   - Po naprawie #1 input powinien być natychmiast dostępny
 
-1. **Autoryzacja SSE**: Dodać token do URL jako query param
-2. **Test Mem0**: Prosty endpoint do ręcznego testowania
-3. **Debug promptów**: Może agenci potrzebują jaśniejszych instrukcji kiedy dodawać JSON?
+3. **HIGH: Debug agent switching**
+   - Dlaczego agenci nie dodają JSON?
+   - Dodać KONKRETNE przykłady do promptów:
+     ```
+     Przykład: "Widzę że potrzebujesz się wygadać. {"agent": "emotional_vomit"} Przełączam cię do specjalisty od emocji."
+     ```
+   - Test każdego agenta osobno
 
-## ⚠️ NIE KOMPLIKOWAĆ!
-- Aplikacja ma być prosta
+3. **HIGH: Weryfikacja Mem0**
+   - Hardcoded test z znanym user_id
+   - Sprawdzić Mem0 dashboard
+   - Może problem z async operations?
+
+4. **MEDIUM: Optymalizacja UI**
+   - Loading indicator podczas switching
+   - Toast notification "Zmieniam agenta..."
+   - Disable input podczas ładowania
+
+## 💡 Quick Wins na jutro:
+1. **FALLBACK BUG FIX** - #1 PRIORYTET! To naprawi większość problemów
+   - Input blocking rozwiąże się automatycznie
+   - Odpowiedzi będą szybsze o 1-2 sekundy
+   - Mniej tokenów = niższe koszty
+2. **Lepsze przykłady w promptach** - konkretne przypadki użycia JSON
+3. **Hardcoded Mem0 test** - endpoint /api/test-mem0 z fixed user_id
+
+## ⚠️ NAJWAŻNIEJSZE NA JUTRO:
+Naprawić bug w chat.py gdzie fallback ZAWSZE się wykonuje. To jest ROOT CAUSE wielu problemów!
+
+## 🎯 Co osiągnęliśmy dzisiaj:
+- ✅ 8 działających agentów
+- ✅ Clean UI bez technicznych szczegółów
+- ✅ Admin panel z kontrolą fallback
+- ✅ SSE auth dla Mem0 (gotowe do działania)
+- ✅ Rozbudowane debugowanie
+
+## ⚠️ PRZYPOMNIENIE:
+- Aplikacja ma być PROSTA
 - Backend robi całą robotę
 - Frontend tylko wyświetla
+- Nie komplikować niepotrzebnie!

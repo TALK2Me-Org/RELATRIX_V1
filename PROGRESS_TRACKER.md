@@ -501,30 +501,114 @@ RELATRIX_V1/
 4. ✅ **Panel admina** - Lepsza obsługa błędów i komunikaty
 5. ✅ **User ID debugging** - Wyjaśnienie dlaczego może być "anonymous"
 
-## Next Steps (v2.0 - AKTUALNE PRIORYTETY)
+## Zadania wykonane [2025-07-09] - FULL DAY PROGRESS
 
-1. **Deploy i Test na Railway** [HIGH] 🚨
-   - Push zmian na Railway
-   - Sprawdzić logi z [MEM0] i [AGENT_SWITCH]
-   - Przetestować /api/chat/test-switch endpoint
-   - Sprawdzić panel admina na produkcji
+1. ✅ **Naprawiono widoczność JSON w chat UI** [10:00]
+   - JSON agenta {"agent": "slug"} jest teraz usuwany przed wyświetleniem użytkownikowi
+   - Dodano funkcję remove_agent_json() w backend
+   - Frontend otrzymuje czystą odpowiedź bez JSON
 
-2. **Weryfikacja Mem0** [HIGH]
-   - Sprawdzić dashboard Mem0 czy zapisuje dane
-   - Porównać user_id z logów z dashboard
-   - Sprawdzić czy API key jest poprawny
-   - Zweryfikować przełączanie agentów
+2. ✅ **Naprawiono podwójne przełączanie agentów** [11:30]
+   - Usunięto duplikację logiki w process_message()
+   - Agent switching dzieje się tylko raz na wiadomość
+   - Poprawiono flow: wykryj JSON → usuń JSON → zmień agenta
 
-3. **Admin Panel** [MEDIUM]
-   - Proste UI do zarządzania agentami
-   - Podgląd aktywnych sesji
-   - Podstawowe metryki użycia
-   - Koszty API calls
+3. ✅ **Dodano wszystkie 8 agentów** [13:00]
+   - emotional_vomit, conflict_solver, solution_finder
+   - communication_simulator, relationship_upgrader
+   - breakthrough_manager, personal_growth_guide
+   - Każdy z własnymi promptami i transfer triggers
 
-4. **Performance Optimization** [MEDIUM]
-   - Cache agentów w pamięci
-   - Optymalizacja SSE streaming
-   - Redukcja opóźnień
+4. ✅ **Global fallback toggle w admin panel** [14:30]
+   - Dodano checkbox do włączania/wyłączania GPT-3.5 fallback
+   - Zapisuje się w localStorage
+   - Backend respektuje ustawienie z frontendu
+
+5. ✅ **Naprawiono autoryzację SSE dla Mem0** [15:00]
+   - Token jest teraz przekazywany przez query param w EventSource
+   - Backend poprawnie wyciąga user_id z tokenu
+   - Mem0 może działać dla zalogowanych użytkowników
+
+6. ✅ **Dodano rozbudowane debugowanie** [16:00]
+   - Prefiksy: [DB], [MEM0], [AGENT_SWITCH], [CHAT]
+   - DEBUG level logging dla lepszego śledzenia
+   - Test endpoint /api/chat/test-switch
+
+7. ✅ **Naprawiono problemy ze spacing w UI** [17:00]
+   - Poprawiono padding i marginy w Chat.tsx
+   - Lepsze wyświetlanie długich wiadomości
+   - Responsywny design
+
+## Known Bugs (do naprawy jutro)
+
+1. **🟡 Input blocking po zakończeniu streamingu**
+   - Po otrzymaniu odpowiedzi input jest zablokowany na kilka sekund
+   - Prawdopodobnie problem z EventSource lub state management
+
+2. **🟡 Fallback nadal się uruchamia mimo zaktualizowanych promptów**
+   - Agenci mają instrukcje dodawania JSON, ale czasem tego nie robią
+   - GPT-3.5 fallback się włącza niepotrzebnie
+
+3. **🟡 Weryfikacja czy agenci zwracają JSON poprawnie**
+   - Niektórzy agenci mogą nie rozumieć instrukcji
+   - Potrzeba lepszych przykładów w promptach
+
+4. **🟡 Mem0 graph nie pokazuje się**
+   - Trzeba sprawdzić format user_id
+   - Może problem z wersją API lub dashboardem
+
+## Next Steps (v2.0 - PLAN NA JUTRO 2025-07-10)
+
+### 🚨 PRIORYTETY NA JUTRO:
+
+1. **Naprawić input blocking bug** [CRITICAL]
+   - Problem: Input jest zablokowany po zakończeniu streamingu na kilka sekund
+   - Plan: Sprawdzić EventSource lifecycle, może trzeba cleanup po zakończeniu
+   - Sprawdzić state management w Chat.tsx
+   - Możliwe że setIsLoading nie jest resetowane poprawnie
+
+2. **Debugować agent switching** [HIGH]
+   - Sprawdzić dlaczego agenci nie dodają JSON mimo instrukcji
+   - Dodać więcej przykładów do promptów agentów
+   - Przetestować każdego agenta osobno
+   - Może zmienić format instrukcji na bardziej explicit
+
+3. **Weryfikacja Mem0 integration** [HIGH]
+   - Zalogować się do Mem0 dashboard i sprawdzić dane
+   - Porównać user_id format (UUID vs string)
+   - Sprawdzić czy używamy właściwego API endpoint
+   - Test z hardcoded user_id żeby wykluczyć auth problem
+
+4. **Optymalizacja fallback** [MEDIUM]
+   - Dodać opcję całkowitego wyłączenia fallback
+   - Może lepszy prompt dla GPT-3.5 detection
+   - Rozważyć cache dla decyzji o przełączeniu
+
+5. **UI/UX improvements** [LOW]
+   - Dodać loading spinner podczas agent switching
+   - Pokazać notification gdy agent się zmienia
+   - Lepsze error handling w UI
+   - Dark mode support
+
+### 📝 NOTATKI DLA NASTĘPNEJ SESJI:
+
+**Co działa:**
+- ✅ Aplikacja jest deployed i działa
+- ✅ Chat streaming działa płynnie
+- ✅ 8 agentów z własnymi promptami
+- ✅ Admin panel z toggle dla fallback
+- ✅ Autoryzacja przez Supabase
+
+**Co wymaga uwagi:**
+- ⚠️ Input blocking bug (kilka sekund delay)
+- ⚠️ Agenci nie zawsze dodają JSON do switching
+- ⚠️ Mem0 - brak pewności czy działa
+- ⚠️ Fallback uruchamia się za często
+
+**Quick wins na jutro:**
+1. Naprawić input blocking - to psuje UX
+2. Dodać lepsze przykłady JSON do promptów
+3. Hardcoded test Mem0 żeby potwierdzić działanie
 
 ---
 
