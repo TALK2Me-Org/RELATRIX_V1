@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { HelpIcon } from './components/Tooltip'
 import Modal from './components/Modal'
-import { testPlayground } from './PlaygroundAPI'
 import { getAgents } from './api'
 import AdminSidebar from './components/AdminSidebar'
 
