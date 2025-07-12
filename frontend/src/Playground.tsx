@@ -1088,7 +1088,6 @@ export default function Playground() {
           </div>
         </div>
       </Modal>
-      </div>
     </div>
   )
 }
