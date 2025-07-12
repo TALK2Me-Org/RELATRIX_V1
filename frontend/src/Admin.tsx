@@ -99,6 +99,12 @@ export default function Admin({ user, onLogout }: Props) {
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
           <h1 className="text-xl font-semibold">RELATRIX Admin</h1>
           <div className="flex items-center gap-4">
+            <button
+              onClick={() => window.location.href = '/playground'}
+              className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
+            >
+              Open Playground
+            </button>
             <span className="text-xs text-gray-500">
               API: {import.meta.env.VITE_API_URL || 'http://localhost:8000'}
             </span>

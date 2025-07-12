@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import Chat from './Chat'
 import Admin from './Admin'
 import Auth from './auth'
+import Playground from './Playground'
 import { getStoredAuth } from './api'
 
 function App() {
@@ -46,6 +47,7 @@ function App() {
               <Admin user={user} onLogout={handleLogout} /> : 
               <Navigate to="/auth" />
           } />
+          <Route path="/playground" element={<Playground />} />
           <Route path="/" element={<Navigate to="/chat" />} />
         </Routes>
       </div>

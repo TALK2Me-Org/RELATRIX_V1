@@ -122,6 +122,7 @@ async def detailed_health_check():
 from auth import auth_router
 from chat import chat_router
 from agents import agents_router
+from playground import playground_router
 from database import seed_agents
 
 # System settings (in-memory for simplicity)
@@ -145,6 +146,7 @@ async def update_settings(settings: dict):
 app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
 app.include_router(chat_router, prefix="/api/chat", tags=["chat"])
 app.include_router(agents_router, prefix="/api/agents", tags=["agents"])
+app.include_router(playground_router, prefix="/api/playground", tags=["playground"])
 
 # Startup event
 @app.on_event("startup")
