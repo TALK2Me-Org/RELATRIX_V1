@@ -20,6 +20,8 @@ class AgentBase(BaseModel):
     slug: str
     name: str
     system_prompt: str
+    model: str = "gpt-4-turbo-preview"
+    temperature: float = 0.7
     is_active: bool = True
 
 
@@ -30,6 +32,8 @@ class AgentCreate(AgentBase):
 class AgentUpdate(BaseModel):
     name: Optional[str] = None
     system_prompt: Optional[str] = None
+    model: Optional[str] = None
+    temperature: Optional[float] = None
     is_active: Optional[bool] = None
 
 
@@ -125,4 +129,61 @@ async def seed_default_agents(db: Session = Depends(get_db)):
         return {"message": "Default agents seeded successfully"}
     except Exception as e:
         logger.error(f"Seed error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@agents_router.post("/migrate-model-columns")
+async def migrate_model_columns(
+    user: dict = Depends(require_user),
+    db: Session = Depends(get_db)
+):
+    """Add model and temperature columns to existing agents table"""
+    try:
+        # Try to add columns if they don't exist
+        from sqlalchemy import text
+        
+        # Check if columns exist
+        result = db.execute(text("""
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name='agents' 
+            AND column_name IN ('model', 'temperature')
+        """))
+        existing_columns = [row[0] for row in result]
+        
+        migrations_done = []
+        
+        # Add model column if missing
+        if 'model' not in existing_columns:
+            db.execute(text("""
+                ALTER TABLE agents 
+                ADD COLUMN model VARCHAR(50) DEFAULT 'gpt-4-turbo-preview'
+            """))
+            migrations_done.append("Added 'model' column")
+            
+        # Add temperature column if missing
+        if 'temperature' not in existing_columns:
+            db.execute(text("""
+                ALTER TABLE agents 
+                ADD COLUMN temperature FLOAT DEFAULT 0.7
+            """))
+            migrations_done.append("Added 'temperature' column")
+            
+        db.commit()
+        
+        if migrations_done:
+            logger.info(f"Migrations completed: {migrations_done}")
+            return {
+                "message": "Migration completed successfully",
+                "migrations": migrations_done
+            }
+        else:
+            return {
+                "message": "Columns already exist, no migration needed",
+                "migrations": []
+            }
+            
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Migration error: {e}")
         raise HTTPException(status_code=500, detail=str(e))

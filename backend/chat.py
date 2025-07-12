@@ -187,10 +187,10 @@ async def stream_chat(
             
             # Stream from OpenAI
             stream = await openai.chat.completions.create(
-                model=settings.openai_model,
+                model=agent.model or settings.openai_model,
                 messages=messages,
                 stream=True,
-                temperature=0.7
+                temperature=agent.temperature if hasattr(agent, 'temperature') else 0.7
             )
             
             full_response = ""

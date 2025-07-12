@@ -2,7 +2,7 @@
 Database setup - single agents table
 Simple SQLAlchemy configuration
 """
-from sqlalchemy import create_engine, Column, String, Text, Boolean
+from sqlalchemy import create_engine, Column, String, Text, Boolean, Float
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.dialects.postgresql import UUID
@@ -32,6 +32,8 @@ class Agent(Base):
     slug = Column(String(50), unique=True, nullable=False)
     name = Column(String(100), nullable=False)
     system_prompt = Column(Text, nullable=False)
+    model = Column(String(50), default="gpt-4-turbo-preview")
+    temperature = Column(Float, default=0.7)
     is_active = Column(Boolean, default=True)
 
 

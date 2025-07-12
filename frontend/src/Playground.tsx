@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { HelpIcon } from './components/Tooltip'
 import Modal from './components/Modal'
 import { testPlayground } from './PlaygroundAPI'
@@ -33,6 +34,7 @@ interface Model {
 }
 
 export default function Playground() {
+  const navigate = useNavigate()
   const [agents, setAgents] = useState<Agent[]>([])
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
   const [systemPrompt, setSystemPrompt] = useState('')
@@ -59,15 +61,24 @@ export default function Playground() {
 
   const loadAgents = async () => {
     try {
+      console.log('[PLAYGROUND] Loading agents from:', `${API_URL}/api/agents`)
       const response = await fetch(`${API_URL}/api/agents`)
+      console.log('[PLAYGROUND] Response status:', response.status)
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
       const data = await response.json()
+      console.log('[PLAYGROUND] Loaded agents:', data)
       setAgents(data)
+      
       if (data.length > 0) {
         setSelectedAgent(data[0])
         setSystemPrompt(data[0].system_prompt)
       }
     } catch (error) {
-      console.error('Failed to load agents:', error)
+      console.error('[PLAYGROUND] Failed to load agents:', error)
     }
   }
 
@@ -169,7 +180,7 @@ export default function Playground() {
             <HelpIcon tooltip="Środowisko testowe do eksperymentowania z promptami. Zmiany nie są zapisywane w bazie danych." />
           </div>
           <button
-            onClick={() => window.location.href = '/admin'}
+            onClick={() => navigate('/admin')}
             className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors flex items-center gap-1"
           >
             ← Back to Admin
@@ -261,12 +272,17 @@ export default function Playground() {
               <input
                 type="range"
                 min="0"
-                max="1"
+                max="1.5"
                 step="0.1"
                 value={settings.temperature}
                 onChange={(e) => setSettings({...settings, temperature: parseFloat(e.target.value)})}
                 className="w-full"
               />
+              <div className="flex justify-between text-xs text-gray-500 mt-1">
+                <span>0.0</span>
+                <span>0.7</span>
+                <span>1.5</span>
+              </div>
             </div>
 
             {/* Toggles */}
