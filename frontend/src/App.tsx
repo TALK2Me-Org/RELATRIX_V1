@@ -1,7 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import Chat from './Chat'
-import Admin from './Admin'
+import AdminNew from './AdminNew'
 import Auth from './auth'
 import Playground from './Playground'
 import { getStoredAuth } from './api'
@@ -44,7 +44,7 @@ function App() {
           } />
           <Route path="/admin" element={
             isAuthenticated ? 
-              <Admin user={user} onLogout={handleLogout} /> : 
+              <AdminNew user={user} onLogout={handleLogout} /> : 
               <Navigate to="/auth" />
           } />
           <Route path="/playground" element={<Playground />} />

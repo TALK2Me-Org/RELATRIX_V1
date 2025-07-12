@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react'
 import { HelpIcon } from './components/Tooltip'
+import Modal from './components/Modal'
 import { testPlayground } from './PlaygroundAPI'
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 interface Agent {
   slug: string
@@ -23,6 +26,12 @@ interface PlaygroundSettings {
   enable_fallback: boolean
 }
 
+interface Model {
+  id: string
+  name: string
+  description: string
+}
+
 export default function Playground() {
   const [agents, setAgents] = useState<Agent[]>([])
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
@@ -32,6 +41,9 @@ export default function Playground() {
   const [loading, setLoading] = useState(false)
   const [activeTab, setActiveTab] = useState<'analysis' | 'raw' | 'clean'>('analysis')
   const [currentDebug, setCurrentDebug] = useState<any>(null)
+  const [isPromptModalOpen, setIsPromptModalOpen] = useState(false)
+  const [tempPrompt, setTempPrompt] = useState('')
+  const [models, setModels] = useState<Model[]>([])
   
   const [settings, setSettings] = useState<PlaygroundSettings>({
     model: 'gpt-4',
@@ -42,11 +54,12 @@ export default function Playground() {
 
   useEffect(() => {
     loadAgents()
+    loadModels()
   }, [])
 
   const loadAgents = async () => {
     try {
-      const response = await fetch('/api/agents')
+      const response = await fetch(`${API_URL}/api/agents`)
       const data = await response.json()
       setAgents(data)
       if (data.length > 0) {
@@ -55,6 +68,21 @@ export default function Playground() {
       }
     } catch (error) {
       console.error('Failed to load agents:', error)
+    }
+  }
+
+  const loadModels = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/playground/models`)
+      const data = await response.json()
+      setModels(data.models || [])
+    } catch (error) {
+      console.error('Failed to load models:', error)
+      // Fallback models
+      setModels([
+        { id: 'gpt-4', name: 'GPT-4', description: 'Default' },
+        { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', description: 'Default' }
+      ])
     }
   }
 
@@ -138,14 +166,14 @@ export default function Playground() {
         <div className="max-w-full px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-semibold">Agent Prompt Playground</h1>
-            <HelpIcon tooltip="Testuj i debuguj prompty agentów bez zapisywania zmian" />
+            <HelpIcon tooltip="Środowisko testowe do eksperymentowania z promptami. Zmiany nie są zapisywane w bazie danych." />
           </div>
           <button
             onClick={() => window.location.href = '/admin'}
             className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors flex items-center gap-1"
           >
             ← Back to Admin
-            <HelpIcon tooltip="Wróć do panelu administracyjnego" />
+            <HelpIcon tooltip="Powrót do panelu admina" />
           </button>
         </div>
       </div>
@@ -158,7 +186,7 @@ export default function Playground() {
             <div>
               <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
                 Select Agent
-                <HelpIcon tooltip="Wybierz agenta do testowania. Zmiany promptu nie są zapisywane." />
+                <HelpIcon tooltip="Wybierz którego agenta chcesz testować. Możesz edytować jego prompt bez wpływu na produkcję." />
               </label>
               <select
                 value={selectedAgent?.slug || ''}
@@ -175,10 +203,24 @@ export default function Playground() {
 
             {/* System Prompt */}
             <div>
-              <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
-                System Prompt
-                <HelpIcon tooltip="Instrukcje systemowe dla agenta. Możesz edytować i testować różne wersje." />
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="flex items-center text-sm font-medium text-gray-700">
+                  System Prompt
+                  <HelpIcon tooltip="Główne instrukcje określające zachowanie agenta. Edytuj i testuj różne wersje bez zapisywania." />
+                </label>
+                <button
+                  onClick={() => {
+                    setTempPrompt(systemPrompt)
+                    setIsPromptModalOpen(true)
+                  }}
+                  className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded transition-colors flex items-center gap-1"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                  </svg>
+                  Expand
+                </button>
+              </div>
               <textarea
                 value={systemPrompt}
                 onChange={(e) => setSystemPrompt(e.target.value)}
@@ -190,23 +232,31 @@ export default function Playground() {
             <div>
               <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
                 Model
-                <HelpIcon tooltip="Model AI do użycia. GPT-4 jest dokładniejszy, GPT-3.5 szybszy." />
+                <HelpIcon tooltip="GPT-4: najlepszy ale wolniejszy. GPT-3.5: szybszy i tańszy. Turbo: najnowsze wersje." />
               </label>
               <select
                 value={settings.model}
                 onChange={(e) => setSettings({...settings, model: e.target.value})}
                 className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="gpt-4">GPT-4</option>
-                <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                {models.map(model => (
+                  <option key={model.id} value={model.id}>
+                    {model.name}
+                  </option>
+                ))}
               </select>
+              {models.find(m => m.id === settings.model) && (
+                <p className="mt-1 text-xs text-gray-500">
+                  {models.find(m => m.id === settings.model)?.description}
+                </p>
+              )}
             </div>
 
             {/* Temperature */}
             <div>
               <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
                 Temperature: {settings.temperature}
-                <HelpIcon tooltip="Kreatywność odpowiedzi. 0 = deterministyczne, 1 = kreatywne." />
+                <HelpIcon tooltip="0.0 = przewidywalne, dokładne odpowiedzi. 1.0 = bardziej kreatywne i zróżnicowane. Zalecane: 0.7" />
               </label>
               <input
                 type="range"
@@ -224,7 +274,7 @@ export default function Playground() {
               <label className="flex items-center justify-between">
                 <span className="flex items-center text-sm">
                   Show JSON Detection
-                  <HelpIcon tooltip="Podświetla JSON w odpowiedziach agenta na żółto." />
+                  <HelpIcon tooltip="Wizualnie zaznacza fragmenty JSON (np. {\"agent\": \"nazwa\"}) w odpowiedziach na żółto." />
                 </span>
                 <input
                   type="checkbox"
@@ -237,7 +287,7 @@ export default function Playground() {
               <label className="flex items-center justify-between">
                 <span className="flex items-center text-sm">
                   Enable Fallback
-                  <HelpIcon tooltip="Włącza automatyczne wykrywanie agenta gdy brak JSON." />
+                  <HelpIcon tooltip="Gdy agent nie doda JSON, system użyje GPT-3.5 do automatycznego wykrycia czy przełączyć agenta." />
                 </span>
                 <input
                   type="checkbox"
@@ -260,7 +310,7 @@ export default function Playground() {
               className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors flex items-center gap-1"
             >
               Clear Chat
-              <HelpIcon tooltip="Wyczyść historię konwersacji testowej." />
+              <HelpIcon tooltip="Usuń wszystkie wiadomości z bieżącej sesji testowej" />
             </button>
           </div>
 
@@ -301,7 +351,12 @@ export default function Playground() {
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault()
+                    handleSend()
+                  }
+                }}
                 placeholder="Wpisz wiadomość testową..."
                 className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 disabled={loading}
@@ -312,7 +367,7 @@ export default function Playground() {
                 className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
               >
                 Send
-                <HelpIcon tooltip="Wyślij wiadomość testową do agenta" />
+                <HelpIcon tooltip="Wyślij (Enter)" />
               </button>
             </div>
           </div>
@@ -332,7 +387,7 @@ export default function Playground() {
                 }`}
               >
                 Response Analysis
-                <HelpIcon tooltip="Analiza odpowiedzi agenta i wykryte elementy." />
+                <HelpIcon tooltip="Szczegółowa analiza: wykryty JSON, sugerowane przełączenie agenta, zużycie tokenów" />
               </button>
               <button
                 onClick={() => setActiveTab('raw')}
@@ -343,7 +398,7 @@ export default function Playground() {
                 }`}
               >
                 Raw Response
-                <HelpIcon tooltip="Pełna odpowiedź z JSON przed czyszczeniem." />
+                <HelpIcon tooltip="Oryginalna odpowiedź agenta zawierająca wszystkie elementy JSON" />
               </button>
               <button
                 onClick={() => setActiveTab('clean')}
@@ -354,7 +409,7 @@ export default function Playground() {
                 }`}
               >
                 Clean Response
-                <HelpIcon tooltip="Odpowiedź pokazywana użytkownikowi (bez JSON)." />
+                <HelpIcon tooltip="Czysta odpowiedź bez elementów technicznych - to widzi użytkownik" />
               </button>
             </div>
           </div>
@@ -370,7 +425,7 @@ export default function Playground() {
                     <div>
                       <h3 className="flex items-center text-sm font-medium text-gray-700 mb-1">
                         Detected JSON
-                        <HelpIcon tooltip="JSON znaleziony w odpowiedzi" />
+                        <HelpIcon tooltip="Fragment JSON wskazujący na przełączenie agenta" />
                       </h3>
                       <pre className="bg-gray-100 p-2 rounded text-xs font-mono overflow-x-auto">
                         {currentDebug.detected_json || 'None'}
@@ -380,7 +435,7 @@ export default function Playground() {
                     <div>
                       <h3 className="flex items-center text-sm font-medium text-gray-700 mb-1">
                         Agent Switch
-                        <HelpIcon tooltip="Czy agent zasugerował przełączenie" />
+                        <HelpIcon tooltip="Nazwa agenta do którego system ma przełączyć" />
                       </h3>
                       <p className="text-sm">
                         {currentDebug.agent_switch ? 
@@ -393,7 +448,7 @@ export default function Playground() {
                     <div>
                       <h3 className="flex items-center text-sm font-medium text-gray-700 mb-1">
                         Token Count
-                        <HelpIcon tooltip="Liczba tokenów użytych w odpowiedzi" />
+                        <HelpIcon tooltip="Ilość tokenów zużytych na tę odpowiedź (wpływa na koszty)" />
                       </h3>
                       <p className="text-sm">{currentDebug.token_count || 'N/A'}</p>
                     </div>
@@ -401,7 +456,7 @@ export default function Playground() {
                     <div>
                       <h3 className="flex items-center text-sm font-medium text-gray-700 mb-1">
                         Processing Time
-                        <HelpIcon tooltip="Czas generowania odpowiedzi" />
+                        <HelpIcon tooltip="Jak długo trwało wygenerowanie odpowiedzi" />
                       </h3>
                       <p className="text-sm">{currentDebug.processing_time || 'N/A'}</p>
                     </div>
@@ -433,6 +488,42 @@ export default function Playground() {
           </div>
         </div>
       </div>
+
+      {/* System Prompt Modal */}
+      <Modal
+        isOpen={isPromptModalOpen}
+        onClose={() => setIsPromptModalOpen(false)}
+        title="Edit System Prompt"
+      >
+        <div className="space-y-4">
+          <div className="text-sm text-gray-600">
+            Edit the system prompt for <strong>{selectedAgent?.name}</strong>
+          </div>
+          <textarea
+            value={tempPrompt}
+            onChange={(e) => setTempPrompt(e.target.value)}
+            className="w-full h-[60vh] px-4 py-3 border rounded-lg font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Enter system prompt..."
+          />
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={() => setIsPromptModalOpen(false)}
+              className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => {
+                setSystemPrompt(tempPrompt)
+                setIsPromptModalOpen(false)
+              }}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Save Changes
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

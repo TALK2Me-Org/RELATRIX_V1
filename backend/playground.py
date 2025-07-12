@@ -45,6 +45,54 @@ class PlaygroundResponse(BaseModel):
     debug_info: Dict[str, Any]
 
 
+@playground_router.get("/models")
+async def get_available_models():
+    """
+    Get list of available OpenAI models
+    """
+    try:
+        # Common models with descriptions
+        models = [
+            {
+                "id": "gpt-4-turbo-preview",
+                "name": "GPT-4 Turbo",
+                "description": "Najnowszy model GPT-4 z wiedzą do kwietnia 2023"
+            },
+            {
+                "id": "gpt-4",
+                "name": "GPT-4",
+                "description": "Najbardziej zaawansowany model, najlepsza jakość"
+            },
+            {
+                "id": "gpt-4-32k",
+                "name": "GPT-4 32K",
+                "description": "GPT-4 z większym kontekstem (32k tokenów)"
+            },
+            {
+                "id": "gpt-3.5-turbo",
+                "name": "GPT-3.5 Turbo",
+                "description": "Szybki i tani, dobry do większości zadań"
+            },
+            {
+                "id": "gpt-3.5-turbo-16k",
+                "name": "GPT-3.5 Turbo 16K",
+                "description": "GPT-3.5 z większym kontekstem (16k tokenów)"
+            }
+        ]
+        
+        return {"models": models}
+        
+    except Exception as e:
+        logger.error(f"[PLAYGROUND] Error fetching models: {e}")
+        # Return default models if API fails
+        return {
+            "models": [
+                {"id": "gpt-4", "name": "GPT-4", "description": "Default"},
+                {"id": "gpt-3.5-turbo", "name": "GPT-3.5 Turbo", "description": "Default"}
+            ]
+        }
+
+
 @playground_router.post("/chat", response_model=PlaygroundResponse)
 async def playground_chat(
     request: PlaygroundRequest,
