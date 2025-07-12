@@ -122,7 +122,7 @@ Reply with just the slug or "no"."""
         if result != "no" and result in [
             "emotional_vomit", "solution_finder", "conflict_solver",
             "communication_simulator", "misunderstanding_protector",
-            "empathy_amplifier", "attachment_analyzer", "relationship_upgrader"
+            "relationship_upgrader", "breakthrough_manager"
         ]:
             logger.info(f"Fallback switch to: {result}")
             return result

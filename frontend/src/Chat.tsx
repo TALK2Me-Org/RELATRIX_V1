@@ -16,13 +16,12 @@ interface Props {
 
 const AGENTS = [
   { slug: 'misunderstanding_protector', name: 'Misunderstanding Protector' },
-  { slug: 'emotional_vomit', name: 'Emotional Vomit' },
+  { slug: 'emotional_vomit', name: 'Emotional Vomit Dumper' },
   { slug: 'solution_finder', name: 'Solution Finder' },
   { slug: 'conflict_solver', name: 'Conflict Solver' },
   { slug: 'communication_simulator', name: 'Communication Simulator' },
-  { slug: 'empathy_amplifier', name: 'Empathy Amplifier' },
-  { slug: 'attachment_analyzer', name: 'Attachment Analyzer' },
-  { slug: 'relationship_upgrader', name: 'Relationship Upgrader' }
+  { slug: 'relationship_upgrader', name: 'Relationship Upgrader' },
+  { slug: 'breakthrough_manager', name: 'Breakthrough Manager' }
 ]
 
 export default function Chat({ user, onLogout }: Props) {
