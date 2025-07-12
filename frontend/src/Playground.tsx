@@ -765,17 +765,62 @@ export default function Playground() {
         </div>
 
         {/* Middle Column - Chat(s) */}
-        <div className="flex-1 flex">
-          {splitView ? (
-            // Split view - two chats side by side
-            <>
-              {/* Left Chat - With Context */}
-              <div className="flex-1 flex flex-col border-r">
-                <div className="bg-white border-b px-4 py-3 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <h2 className="font-medium">With Context</h2>
-                    <HelpIcon tooltip="Chat z pełną historią konwersacji" />
+        <div className="flex-1 flex flex-col">
+          <div className="flex-1 flex">
+            {splitView ? (
+              // Split view - two chats side by side
+              <>
+                {/* Left Chat - With Context */}
+                <div className="flex-1 flex flex-col border-r">
+                  <div className="bg-white border-b px-4 py-3 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <h2 className="font-medium">With Context</h2>
+                      <HelpIcon tooltip="Chat z pełną historią konwersacji" />
+                    </div>
                   </div>
+                  <ChatMessages 
+                    messages={messages}
+                    streamingContent={streamingContent}
+                    loading={loading}
+                    showJson={settings.show_json}
+                  />
+                </div>
+                
+                {/* Right Chat - With Mem0 */}
+                <div className="flex-1 flex flex-col">
+                  <div className="bg-white border-b px-4 py-3 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <h2 className="font-medium">With Mem0</h2>
+                      <HelpIcon tooltip="Chat używający pamięci Mem0" />
+                    </div>
+                  </div>
+                  <ChatMessages 
+                    messages={mem0Messages}
+                    streamingContent={mem0Streaming}
+                    loading={mem0Loading}
+                    showJson={settings.show_json}
+                  />
+                </div>
+              </>
+            ) : (
+              // Single chat view
+              <div className="flex-1 flex flex-col">
+                <div className="bg-white border-b px-4 py-3 flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <h2 className="font-medium">Test Conversation</h2>
+                    <div className="flex items-center gap-1 text-sm text-gray-600">
+                      <span>Total tokens:</span>
+                      <span className="font-mono font-medium">{totalTokens}</span>
+                      <HelpIcon tooltip="Przybliżona liczba tokenów zużytych w tej sesji" />
+                    </div>
+                  </div>
+                  <button
+                    onClick={clearChat}
+                    className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors flex items-center gap-1"
+                  >
+                    Clear Chat
+                    <HelpIcon tooltip="Usuń wszystkie wiadomości z bieżącej sesji testowej" />
+                  </button>
                 </div>
                 <ChatMessages 
                   messages={messages}
@@ -784,80 +829,36 @@ export default function Playground() {
                   showJson={settings.show_json}
                 />
               </div>
-              
-              {/* Right Chat - With Mem0 */}
-              <div className="flex-1 flex flex-col">
-                <div className="bg-white border-b px-4 py-3 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <h2 className="font-medium">With Mem0</h2>
-                    <HelpIcon tooltip="Chat używający pamięci Mem0" />
-                  </div>
-                </div>
-                <ChatMessages 
-                  messages={mem0Messages}
-                  streamingContent={mem0Streaming}
-                  loading={mem0Loading}
-                  showJson={settings.show_json}
-                />
-              </div>
-            </>
-          ) : (
-            // Single chat view
-            <div className="flex-1 flex flex-col">
-              <div className="bg-white border-b px-4 py-3 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <h2 className="font-medium">Test Conversation</h2>
-                  <div className="flex items-center gap-1 text-sm text-gray-600">
-                    <span>Total tokens:</span>
-                    <span className="font-mono font-medium">{totalTokens}</span>
-                    <HelpIcon tooltip="Przybliżona liczba tokenów zużytych w tej sesji" />
-                  </div>
-                </div>
-                <button
-                  onClick={clearChat}
-                  className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors flex items-center gap-1"
-                >
-                  Clear Chat
-                  <HelpIcon tooltip="Usuń wszystkie wiadomości z bieżącej sesji testowej" />
-                </button>
-              </div>
-              <ChatMessages 
-                messages={messages}
-                streamingContent={streamingContent}
-                loading={loading}
-                showJson={settings.show_json}
-              />
-            </div>
-          )}
-        </div>
-        
-        {/* Input - shared for both views */}
-        <div className="bg-white border-t p-4">
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault()
-                  handleSend()
-                }
-              }}
-              placeholder={splitView && !selectedTestUser ? "Select a test user first..." : "Wpisz wiadomość testową..."}
-              className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              disabled={loading || (splitView && !selectedTestUser)}
-            />
-            <button
-              onClick={handleSend}
-              disabled={loading || !input.trim() || (splitView && !selectedTestUser)}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
-            >
-              Send
-              <HelpIcon tooltip="Wyślij (Enter)" />
-            </button>
+            )}
           </div>
-        </div>
+          
+          {/* Input - shared for both views */}
+          <div className="bg-white border-t p-4">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault()
+                    handleSend()
+                  }
+                }}
+                placeholder={splitView && !selectedTestUser ? "Select a test user first..." : "Wpisz wiadomość testową..."}
+                className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={loading || (splitView && !selectedTestUser)}
+              />
+              <button
+                onClick={handleSend}
+                disabled={loading || !input.trim() || (splitView && !selectedTestUser)}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
+              >
+                Send
+                <HelpIcon tooltip="Wyślij (Enter)" />
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Right Column - Debug Info */}
