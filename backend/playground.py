@@ -16,6 +16,7 @@ from openai import AsyncOpenAI
 from database import get_db
 from agent_parser import extract_agent_slug, remove_agent_json
 from config import settings
+from memory_service import search_memories, add_memory
 
 logger = logging.getLogger(__name__)
 
@@ -267,6 +268,105 @@ async def playground_sse(
             
         except Exception as e:
             logger.error(f"[PLAYGROUND SSE] Error: {e}")
+            error_data = {"error": str(e)}
+            yield f"data: {json.dumps(error_data)}\n\n"
+    
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"
+        }
+    )
+
+
+@playground_router.get("/mem0-sse")
+async def playground_mem0_sse(
+    agent_slug: str = Query(...),
+    system_prompt: str = Query(...),
+    message: str = Query(...),
+    user_id: str = Query(...),  # Playground test user ID
+    model: str = Query("gpt-4"),
+    temperature: float = Query(0.7),
+    db: Session = Depends(get_db)
+):
+    """
+    SSE endpoint for Mem0-enabled chat in playground
+    Uses only the last message + Mem0 context
+    """
+    async def generate():
+        start_time = time.time()
+        
+        try:
+            logger.info(f"[PLAYGROUND MEM0] User: {user_id}, Agent: {agent_slug}")
+            
+            # Search memories first
+            memories = await search_memories(message, user_id)
+            memory_context = ""
+            
+            if memories:
+                logger.info(f"[PLAYGROUND MEM0] Found {len(memories)} memories")
+                memory_texts = [m.get('memory', '') for m in memories[:5]]  # Limit to 5
+                memory_context = f"\n\nRelevant memories:\n" + "\n".join(f"- {m}" for m in memory_texts)
+            
+            # Build messages with system prompt and memory context
+            enhanced_prompt = system_prompt + memory_context
+            messages = [
+                {"role": "system", "content": enhanced_prompt},
+                {"role": "user", "content": message}
+            ]
+            
+            # Stream from OpenAI
+            stream = await openai.chat.completions.create(
+                model=model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=1000,
+                stream=True
+            )
+            
+            full_response = ""
+            
+            async for chunk in stream:
+                if chunk.choices[0].delta.content:
+                    content = chunk.choices[0].delta.content
+                    full_response += content
+                    
+                    # Send chunk
+                    data = {
+                        "chunk": content,
+                        "memory_count": len(memories)
+                    }
+                    yield f"data: {json.dumps(data)}\n\n"
+            
+            # Save to memory
+            await add_memory(
+                messages=[
+                    {"role": "user", "content": message},
+                    {"role": "assistant", "content": full_response}
+                ],
+                user_id=user_id
+            )
+            
+            # Detect JSON in full response
+            detected_json = extract_agent_slug(full_response)
+            
+            # Send final metadata
+            final_data = {
+                "detected_json": f'{{"agent": "{detected_json}"}}' if detected_json else None,
+                "agent_switch": detected_json,
+                "memory_count": len(memories),
+                "processing_time": f"{(time.time() - start_time):.2f}s"
+            }
+            yield f"data: {json.dumps(final_data)}\n\n"
+            
+            # Send done signal
+            yield f"data: [DONE]\n\n"
+            
+        except Exception as e:
+            logger.error(f"[PLAYGROUND MEM0] Error: {e}")
             error_data = {"error": str(e)}
             yield f"data: {json.dumps(error_data)}\n\n"
     

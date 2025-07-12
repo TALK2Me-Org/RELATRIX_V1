@@ -37,6 +37,90 @@ interface Model {
   description: string
 }
 
+interface TestUser {
+  id: string
+  name: string
+  created_at: number
+  last_used: number
+  history: Message[]
+}
+
+// Chat Messages Component
+const ChatMessages = ({ messages, streamingContent, loading, showJson }: {
+  messages: Message[]
+  streamingContent: string
+  loading: boolean
+  showJson: boolean
+}) => {
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages, streamingContent])
+  
+  const highlightJSON = (content: string) => {
+    if (!showJson) return content
+    
+    const jsonRegex = /\{"agent":\s*"[^"]+"\}/g
+    const parts = content.split(jsonRegex)
+    const matches = content.match(jsonRegex) || []
+    
+    return (
+      <>
+        {parts.map((part, i) => (
+          <span key={i}>
+            {part}
+            {matches[i] && (
+              <span className="bg-yellow-200 px-1 rounded font-mono text-sm">
+                {matches[i]}
+              </span>
+            )}
+          </span>
+        ))}
+      </>
+    )
+  }
+  
+  return (
+    <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      {messages.map((msg, idx) => (
+        <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+          <div className={`max-w-2xl px-4 py-2 rounded-lg ${
+            msg.role === 'user' 
+              ? 'bg-blue-600 text-white' 
+              : 'bg-gray-100 text-gray-900'
+          }`}>
+            {msg.role === 'assistant' && showJson ? (
+              <div className="whitespace-pre-wrap">{highlightJSON(msg.raw_content || msg.content)}</div>
+            ) : (
+              <div className="whitespace-pre-wrap">{msg.content}</div>
+            )}
+          </div>
+        </div>
+      ))}
+      {loading && streamingContent && (
+        <div className="flex justify-start">
+          <div className="bg-gray-100 px-4 py-2 rounded-lg text-gray-900 max-w-2xl">
+            <div className="whitespace-pre-wrap">{streamingContent}</div>
+          </div>
+        </div>
+      )}
+      {loading && !streamingContent && (
+        <div className="flex justify-start">
+          <div className="bg-gray-100 px-4 py-2 rounded-lg">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+            </div>
+          </div>
+        </div>
+      )}
+      <div ref={messagesEndRef} />
+    </div>
+  )
+}
+
 export default function Playground() {
   const navigate = useNavigate()
   const [agents, setAgents] = useState<Agent[]>([])
@@ -59,6 +143,13 @@ export default function Playground() {
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(() => {
     return localStorage.getItem('playground_rightPanel') === 'collapsed'
   })
+  const [testUsers, setTestUsers] = useState<TestUser[]>([])
+  const [selectedTestUser, setSelectedTestUser] = useState<TestUser | null>(null)
+  const [showUserModal, setShowUserModal] = useState(false)
+  const [splitView, setSplitView] = useState(false)
+  const [mem0Messages, setMem0Messages] = useState<Message[]>([])
+  const [mem0Streaming, setMem0Streaming] = useState('')
+  const [mem0Loading, setMem0Loading] = useState(false)
   
   const [settings, setSettings] = useState<PlaygroundSettings>({
     model: 'gpt-4',
@@ -71,6 +162,7 @@ export default function Playground() {
   useEffect(() => {
     loadAgents()
     loadModels()
+    loadTestUsers()
   }, [])
 
   const loadAgents = async () => {
@@ -146,14 +238,101 @@ export default function Playground() {
     localStorage.setItem('playground_rightPanel', newState ? 'collapsed' : 'expanded')
   }
 
+  const loadTestUsers = () => {
+    const saved = localStorage.getItem('playground_users')
+    if (saved) {
+      const users = JSON.parse(saved)
+      setTestUsers(Object.values(users))
+    }
+  }
+
+  const createTestUser = () => {
+    const timestamp = Date.now()
+    const random = Math.random().toString(36).substr(2, 5)
+    const newUser: TestUser = {
+      id: `playground_user_${timestamp}_${random}`,
+      name: `Test User ${testUsers.length + 1}`,
+      created_at: timestamp,
+      last_used: timestamp,
+      history: []
+    }
+    
+    const allUsers = [...testUsers, newUser]
+    setTestUsers(allUsers)
+    setSelectedTestUser(newUser)
+    
+    // Save to localStorage
+    const usersObj = allUsers.reduce((acc, user) => {
+      acc[user.id] = user
+      return acc
+    }, {} as Record<string, TestUser>)
+    localStorage.setItem('playground_users', JSON.stringify(usersObj))
+    
+    setShowUserModal(false)
+  }
+
+  const deleteTestUser = async (userId: string) => {
+    if (!window.confirm('Delete this test user and all their data?')) return
+    
+    // Remove from state
+    const remaining = testUsers.filter(u => u.id !== userId)
+    setTestUsers(remaining)
+    
+    if (selectedTestUser?.id === userId) {
+      setSelectedTestUser(null)
+      setMessages([])
+      setMem0Messages([])
+    }
+    
+    // Save to localStorage
+    const usersObj = remaining.reduce((acc, user) => {
+      acc[user.id] = user
+      return acc
+    }, {} as Record<string, TestUser>)
+    localStorage.setItem('playground_users', JSON.stringify(usersObj))
+    
+    // TODO: Call backend to delete from Mem0
+  }
+
+  const selectTestUser = (user: TestUser) => {
+    setSelectedTestUser(user)
+    setMessages(user.history || [])
+    setMem0Messages([])
+    setShowUserModal(false)
+    
+    // Update last_used
+    user.last_used = Date.now()
+    const allUsers = testUsers.map(u => u.id === user.id ? user : u)
+    setTestUsers(allUsers)
+    
+    const usersObj = allUsers.reduce((acc, u) => {
+      acc[u.id] = u
+      return acc
+    }, {} as Record<string, TestUser>)
+    localStorage.setItem('playground_users', JSON.stringify(usersObj))
+  }
+
   const handleSend = async () => {
     if (!input.trim() || !selectedAgent || loading) return
+    
+    // Check if we need test user for Mem0
+    if (splitView && !selectedTestUser) {
+      alert('Please select or create a test user for Mem0 comparison')
+      return
+    }
 
     const userMessage: Message = { role: 'user', content: input }
     setMessages(prev => [...prev, userMessage])
+    if (splitView) {
+      setMem0Messages(prev => [...prev, userMessage])
+    }
     setInput('')
     setLoading(true)
     setStreamingContent('')
+    if (splitView) {
+      setMem0Loading(true)
+      setMem0Streaming('')
+    }
 
     try {
       // Build history for context
@@ -251,6 +430,11 @@ export default function Playground() {
         setStreamingContent('')
         setLoading(false)
       }
+      
+      // Start Mem0 stream if split view
+      if (splitView && selectedTestUser) {
+        startMem0Stream(input)
+      }
 
     } catch (error) {
       console.error('Playground error:', error)
@@ -262,34 +446,105 @@ export default function Playground() {
     }
   }
 
-  const clearChat = () => {
-    setMessages([])
-    setCurrentDebug(null)
-    setTotalTokens(0)
+  const startMem0Stream = async (message: string) => {
+    if (!selectedAgent || !selectedTestUser) return
+    
+    try {
+      const params = new URLSearchParams({
+        agent_slug: selectedAgent.slug,
+        system_prompt: systemPrompt,
+        message: message,
+        user_id: selectedTestUser.id,
+        model: settings.model,
+        temperature: settings.temperature.toString()
+      })
+
+      const eventSource = new EventSource(`${API_URL}/api/playground/mem0-sse?${params}`)
+      let fullResponse = ''
+      let detectedJson: string | null = null
+
+      eventSource.onmessage = (event) => {
+        if (event.data === '[DONE]') {
+          eventSource.close()
+          
+          const assistantMessage: Message = {
+            role: 'assistant',
+            content: fullResponse,
+            raw_content: fullResponse,
+            detected_json: detectedJson || undefined
+          }
+
+          setMem0Messages(prev => [...prev, assistantMessage])
+          setMem0Streaming('')
+          setMem0Loading(false)
+          
+          // Save to test user history
+          if (selectedTestUser) {
+            selectedTestUser.history = [...messages, 
+              { role: 'user', content: message },
+              { role: 'assistant', content: fullResponse }
+            ]
+            const allUsers = testUsers.map(u => u.id === selectedTestUser.id ? selectedTestUser : u)
+            const usersObj = allUsers.reduce((acc, u) => {
+              acc[u.id] = u
+              return acc
+            }, {} as Record<string, TestUser>)
+            localStorage.setItem('playground_users', JSON.stringify(usersObj))
+          }
+          
+          return
+        }
+
+        try {
+          const data = JSON.parse(event.data)
+          
+          if (data.error) {
+            throw new Error(data.error)
+          }
+
+          if (data.chunk) {
+            fullResponse += data.chunk
+            setMem0Streaming(fullResponse)
+          }
+
+          if (data.detected_json) {
+            detectedJson = data.detected_json
+          }
+        } catch (e) {
+          console.error('Mem0 parse error:', e)
+        }
+      }
+
+      eventSource.onerror = (error) => {
+        console.error('Mem0 SSE error:', error)
+        eventSource.close()
+        setMem0Messages(prev => [...prev, {
+          role: 'assistant',
+          content: 'Error: Mem0 connection failed'
+        }])
+        setMem0Streaming('')
+        setMem0Loading(false)
+      }
+
+    } catch (error) {
+      console.error('Mem0 error:', error)
+      setMem0Messages(prev => [...prev, {
+        role: 'assistant',
+        content: 'Error: Failed to get Mem0 response'
+      }])
+      setMem0Loading(false)
+    }
   }
 
-  const highlightJSON = (content: string) => {
-    if (!settings.show_json) return content
-    
-    const jsonRegex = /\{"agent":\s*"[^"]+"\}/g
-    const parts = content.split(jsonRegex)
-    const matches = content.match(jsonRegex) || []
-    
-    return (
-      <>
-        {parts.map((part, i) => (
-          <span key={i}>
-            {part}
-            {matches[i] && (
-              <span className="bg-yellow-200 px-1 rounded font-mono text-sm">
-                {matches[i]}
-              </span>
-            )}
-          </span>
-        ))}
-      </>
-    )
+  const clearChat = () => {
+    setMessages([])
+    setMem0Messages([])
+    setCurrentDebug(null)
+    setTotalTokens(0)
+    setStreamingContent('')
+    setMem0Streaming('')
   }
+
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -312,6 +567,34 @@ export default function Playground() {
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-semibold">Agent Prompt Playground</h1>
               <HelpIcon tooltip="Środowisko testowe do eksperymentowania z promptami. Zmiany nie są zapisywane w bazie danych." />
+            </div>
+            
+            {/* Test User Controls */}
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={splitView}
+                  onChange={(e) => setSplitView(e.target.checked)}
+                  className="rounded"
+                />
+                <span className="text-sm">Split View (Mem0)</span>
+                <HelpIcon tooltip="Porównaj odpowiedzi z i bez pamięci Mem0" />
+              </label>
+              
+              {splitView && (
+                <div className="flex items-center gap-2 border-l pl-3">
+                  <span className="text-sm text-gray-600">
+                    {selectedTestUser ? selectedTestUser.name : 'No user selected'}
+                  </span>
+                  <button
+                    onClick={() => setShowUserModal(true)}
+                    className="px-3 py-1 text-sm bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-colors"
+                  >
+                    Manage Users
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -481,92 +764,100 @@ export default function Playground() {
           </div>
         </div>
 
-        {/* Middle Column - Chat */}
-        <div className="flex-1 flex flex-col">
-          {/* Chat Header */}
-          <div className="bg-white border-b px-4 py-3 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <h2 className="font-medium">Test Conversation</h2>
-              <div className="flex items-center gap-1 text-sm text-gray-600">
-                <span>Total tokens:</span>
-                <span className="font-mono font-medium">{totalTokens}</span>
-                <HelpIcon tooltip="Przybliżona liczba tokenów zużytych w tej sesji" />
-              </div>
-            </div>
-            <button
-              onClick={clearChat}
-              className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors flex items-center gap-1"
-            >
-              Clear Chat
-              <HelpIcon tooltip="Usuń wszystkie wiadomości z bieżącej sesji testowej" />
-            </button>
-          </div>
-
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {messages.map((msg, idx) => (
-              <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-2xl px-4 py-2 rounded-lg ${
-                  msg.role === 'user' 
-                    ? 'bg-blue-600 text-white' 
-                    : 'bg-gray-100 text-gray-900'
-                }`}>
-                  {msg.role === 'assistant' && settings.show_json ? (
-                    <div className="whitespace-pre-wrap">{highlightJSON(msg.raw_content || msg.content)}</div>
-                  ) : (
-                    <div className="whitespace-pre-wrap">{msg.content}</div>
-                  )}
-                </div>
-              </div>
-            ))}
-            {loading && streamingContent && (
-              <div className="flex justify-start">
-                <div className="bg-gray-100 px-4 py-2 rounded-lg text-gray-900 max-w-2xl">
-                  <div className="whitespace-pre-wrap">{streamingContent}</div>
-                </div>
-              </div>
-            )}
-            {loading && !streamingContent && (
-              <div className="flex justify-start">
-                <div className="bg-gray-100 px-4 py-2 rounded-lg">
+        {/* Middle Column - Chat(s) */}
+        <div className="flex-1 flex">
+          {splitView ? (
+            // Split view - two chats side by side
+            <>
+              {/* Left Chat - With Context */}
+              <div className="flex-1 flex flex-col border-r">
+                <div className="bg-white border-b px-4 py-3 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                    <h2 className="font-medium">With Context</h2>
+                    <HelpIcon tooltip="Chat z pełną historią konwersacji" />
                   </div>
                 </div>
+                <ChatMessages 
+                  messages={messages}
+                  streamingContent={streamingContent}
+                  loading={loading}
+                  showJson={settings.show_json}
+                />
               </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* Input */}
-          <div className="bg-white border-t p-4">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault()
-                    handleSend()
-                  }
-                }}
-                placeholder="Wpisz wiadomość testową..."
-                className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                disabled={loading}
+              
+              {/* Right Chat - With Mem0 */}
+              <div className="flex-1 flex flex-col">
+                <div className="bg-white border-b px-4 py-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <h2 className="font-medium">With Mem0</h2>
+                    <HelpIcon tooltip="Chat używający pamięci Mem0" />
+                  </div>
+                </div>
+                <ChatMessages 
+                  messages={mem0Messages}
+                  streamingContent={mem0Streaming}
+                  loading={mem0Loading}
+                  showJson={settings.show_json}
+                />
+              </div>
+            </>
+          ) : (
+            // Single chat view
+            <div className="flex-1 flex flex-col">
+              <div className="bg-white border-b px-4 py-3 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <h2 className="font-medium">Test Conversation</h2>
+                  <div className="flex items-center gap-1 text-sm text-gray-600">
+                    <span>Total tokens:</span>
+                    <span className="font-mono font-medium">{totalTokens}</span>
+                    <HelpIcon tooltip="Przybliżona liczba tokenów zużytych w tej sesji" />
+                  </div>
+                </div>
+                <button
+                  onClick={clearChat}
+                  className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors flex items-center gap-1"
+                >
+                  Clear Chat
+                  <HelpIcon tooltip="Usuń wszystkie wiadomości z bieżącej sesji testowej" />
+                </button>
+              </div>
+              <ChatMessages 
+                messages={messages}
+                streamingContent={streamingContent}
+                loading={loading}
+                showJson={settings.show_json}
               />
-              <button
-                onClick={handleSend}
-                disabled={loading || !input.trim()}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
-              >
-                Send
-                <HelpIcon tooltip="Wyślij (Enter)" />
-              </button>
             </div>
+          )}
+        </div>
+        
+        {/* Input - shared for both views */}
+        <div className="bg-white border-t p-4">
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  handleSend()
+                }
+              }}
+              placeholder={splitView && !selectedTestUser ? "Select a test user first..." : "Wpisz wiadomość testową..."}
+              className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={loading || (splitView && !selectedTestUser)}
+            />
+            <button
+              onClick={handleSend}
+              disabled={loading || !input.trim() || (splitView && !selectedTestUser)}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
+            >
+              Send
+              <HelpIcon tooltip="Wyślij (Enter)" />
+            </button>
           </div>
+        </div>
         </div>
 
         {/* Right Column - Debug Info */}
@@ -740,6 +1031,60 @@ export default function Playground() {
             >
               Save Changes
             </button>
+          </div>
+        </div>
+      </Modal>
+      
+      {/* Test Users Modal */}
+      <Modal
+        isOpen={showUserModal}
+        onClose={() => setShowUserModal(false)}
+        title="Manage Test Users"
+      >
+        <div className="space-y-4">
+          <div className="text-sm text-gray-600">
+            Create and manage test users for Mem0 testing
+          </div>
+          
+          <button
+            onClick={createTestUser}
+            className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Create New Test User
+          </button>
+          
+          <div className="border-t pt-4">
+            <h3 className="font-medium mb-2">Existing Users</h3>
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              {testUsers.length === 0 ? (
+                <p className="text-sm text-gray-500">No test users yet</p>
+              ) : (
+                testUsers.map(user => (
+                  <div key={user.id} className="flex items-center justify-between p-2 border rounded-lg">
+                    <div>
+                      <div className="font-medium">{user.name}</div>
+                      <div className="text-xs text-gray-500">
+                        Created: {new Date(user.created_at).toLocaleDateString()}
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => selectTestUser(user)}
+                        className="px-3 py-1 text-sm bg-green-100 text-green-700 rounded hover:bg-green-200"
+                      >
+                        Select
+                      </button>
+                      <button
+                        onClick={() => deleteTestUser(user.id)}
+                        className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
       </Modal>
