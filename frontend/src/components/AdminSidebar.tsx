@@ -11,7 +11,6 @@ interface SidebarItem {
 interface AdminSidebarProps {
   activeItem: string
   onItemClick: (id: string) => void
-  onPlayground: () => void
 }
 
 const menuItems: SidebarItem[] = [
@@ -35,7 +34,7 @@ const menuItems: SidebarItem[] = [
   }
 ]
 
-export default function AdminSidebar({ activeItem, onItemClick, onPlayground }: AdminSidebarProps) {
+export default function AdminSidebar({ activeItem, onItemClick }: AdminSidebarProps) {
   const [isExpanded, setIsExpanded] = useState(() => {
     const saved = localStorage.getItem('adminSidebarExpanded')
     return saved !== 'false'

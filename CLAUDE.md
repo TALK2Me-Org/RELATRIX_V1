@@ -211,6 +211,28 @@ frontend/src/
 └── index.tsx            # Entry point
 ```
 
+## ⚠️ WAŻNE: Migracja bazy danych (2025-07-12)
+
+### Po deploy dodaj kolumny do bazy:
+1. Zaloguj się do admin panel
+2. Otwórz konsolę przeglądarki (F12)
+3. Wykonaj:
+```javascript
+fetch('https://relatrix-backend.up.railway.app/api/agents/migrate-model-columns', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer ' + localStorage.getItem('relatrix_access_token'),
+    'Content-Type': 'application/json'
+  }
+}).then(r => r.json()).then(console.log)
+```
+
+Alternatywnie przez Railway PostgreSQL:
+```sql
+ALTER TABLE agents ADD COLUMN model VARCHAR(50) DEFAULT 'gpt-4-turbo-preview';
+ALTER TABLE agents ADD COLUMN temperature FLOAT DEFAULT 0.7;
+```
+
 ## Common Commands
 
 ### Git Commands

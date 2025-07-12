@@ -25,9 +25,6 @@ export default function AdminNew({ user, onLogout }: Props) {
     }
   }
 
-  const handlePlayground = () => {
-    window.location.href = '/playground'
-  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -35,7 +32,6 @@ export default function AdminNew({ user, onLogout }: Props) {
       <AdminSidebar 
         activeItem={activeSection}
         onItemClick={setActiveSection}
-        onPlayground={handlePlayground}
       />
 
       {/* Main Content */}
