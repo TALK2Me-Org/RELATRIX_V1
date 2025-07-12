@@ -86,7 +86,7 @@ export default function Playground() {
         role: 'assistant',
         content: response.clean_response,
         raw_content: response.raw_response,
-        detected_json: response.detected_json,
+        detected_json: response.detected_json || undefined,
         debug_info: response.debug_info
       }
 
