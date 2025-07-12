@@ -771,8 +771,8 @@ export default function Playground() {
               // Split view - two chats side by side
               <>
                 {/* Left Chat - With Context */}
-                <div className="flex-1 flex flex-col border-r">
-                  <div className="bg-white border-b px-4 py-3 flex items-center justify-between">
+                <div className="flex-1 flex flex-col border-r min-h-0">
+                  <div className="bg-white border-b px-4 py-3 flex items-center justify-between flex-shrink-0">
                     <div className="flex items-center gap-2">
                       <h2 className="font-medium">With Context</h2>
                       <HelpIcon tooltip="Chat z pełną historią konwersacji" />
@@ -787,8 +787,8 @@ export default function Playground() {
                 </div>
                 
                 {/* Right Chat - With Mem0 */}
-                <div className="flex-1 flex flex-col">
-                  <div className="bg-white border-b px-4 py-3 flex items-center justify-between">
+                <div className="flex-1 flex flex-col min-h-0">
+                  <div className="bg-white border-b px-4 py-3 flex items-center justify-between flex-shrink-0">
                     <div className="flex items-center gap-2">
                       <h2 className="font-medium">With Mem0</h2>
                       <HelpIcon tooltip="Chat używający pamięci Mem0" />
@@ -804,8 +804,8 @@ export default function Playground() {
               </>
             ) : (
               // Single chat view
-              <div className="flex-1 flex flex-col">
-                <div className="bg-white border-b px-4 py-3 flex items-center justify-between">
+              <div className="flex-1 flex flex-col min-h-0">
+                <div className="bg-white border-b px-4 py-3 flex items-center justify-between flex-shrink-0">
                   <div className="flex items-center gap-4">
                     <h2 className="font-medium">Test Conversation</h2>
                     <div className="flex items-center gap-1 text-sm text-gray-600">
