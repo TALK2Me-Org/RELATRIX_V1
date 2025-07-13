@@ -173,18 +173,18 @@ async def stream_chat(
                 logger.info(f"[CHAT] Memory search complete, found {len(memories)} memories")
             
             # Build messages for OpenAI
-            messages = [
-                {"role": "system", "content": agent.system_prompt}
-            ]
+            system_content = agent.system_prompt
             
-            # Add memories as context
+            # Add memories if available
             if memories:
-                context = "Previous context:\n"
+                system_content += "\n\nUser memory:\n"
                 for mem in memories:
-                    context += f"- {mem.get('memory', mem.get('content', ''))}\n"
-                messages.append({"role": "system", "content": context})
+                    system_content += f"- {mem.get('memory', mem.get('content', ''))}\n"
             
-            messages.append({"role": "user", "content": message})
+            messages = [
+                {"role": "system", "content": system_content},
+                {"role": "user", "content": message}
+            ]
             
             # Stream response from OpenAI using agent's specific model/temperature
             stream = await openai.chat.completions.create(
