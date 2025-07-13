@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { streamChat, getSettings } from './api'
+import { streamChat, getSettings, getAgents } from './api'
 
 interface Message {
   id: string
@@ -14,15 +14,15 @@ interface Props {
   onLogout: () => void
 }
 
-const AGENTS = [
-  { slug: 'misunderstanding_protector', name: 'Misunderstanding Protector' },
-  { slug: 'emotional_vomit', name: 'Emotional Vomit Dumper' },
-  { slug: 'solution_finder', name: 'Solution Finder' },
-  { slug: 'conflict_solver', name: 'Conflict Solver' },
-  { slug: 'communication_simulator', name: 'Communication Simulator' },
-  { slug: 'relationship_upgrader', name: 'Relationship Upgrader' },
-  { slug: 'breakthrough_manager', name: 'Breakthrough Manager' }
-]
+interface Agent {
+  id: string
+  slug: string
+  name: string
+  system_prompt: string
+  model: string
+  temperature: number
+  is_active: boolean
+}
 
 export default function Chat({ user, onLogout }: Props) {
   const navigate = useNavigate()
@@ -30,6 +30,7 @@ export default function Chat({ user, onLogout }: Props) {
   const [input, setInput] = useState('')
   const [currentAgent, setCurrentAgent] = useState('misunderstanding_protector')
   const [isStreaming, setIsStreaming] = useState(false)
+  const [agents, setAgents] = useState<Agent[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const scrollToBottom = () => {
@@ -41,18 +42,23 @@ export default function Chat({ user, onLogout }: Props) {
   }, [messages])
 
   useEffect(() => {
-    // Load default agent from settings
-    const loadDefaultAgent = async () => {
+    // Load agents and default agent
+    const loadData = async () => {
       try {
+        // Load agents
+        const agentsList = await getAgents()
+        setAgents(agentsList)
+        
+        // Load default agent from settings
         const settings = await getSettings()
         if (settings.default_agent) {
           setCurrentAgent(settings.default_agent)
         }
       } catch (error) {
-        console.error('Failed to load default agent:', error)
+        console.error('Failed to load data:', error)
       }
     }
-    loadDefaultAgent()
+    loadData()
   }, [])
 
   const handleSend = async () => {
@@ -125,7 +131,7 @@ export default function Chat({ user, onLogout }: Props) {
               onChange={(e) => setCurrentAgent(e.target.value)}
               className="px-3 py-1 border rounded-lg text-sm"
             >
-              {AGENTS.map(agent => (
+              {agents.map(agent => (
                 <option key={agent.slug} value={agent.slug}>
                   {agent.name}
                 </option>
