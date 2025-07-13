@@ -149,6 +149,26 @@ app.include_router(chat_router, prefix="/api/chat", tags=["chat"])
 app.include_router(agents_router, prefix="/api/agents", tags=["agents"])
 app.include_router(playground_router, prefix="/api/playground", tags=["playground"])
 
+# Optional: Include Mem0 playground if configured
+try:
+    from config import settings
+    if settings.mem0_api_key:
+        from playground_mem0 import mem0_router
+        app.include_router(mem0_router, prefix="/api/playground-mem0", tags=["playground-mem0"])
+        logger.info("[MAIN] Mem0 playground enabled")
+except Exception as e:
+    logger.warning(f"[MAIN] Mem0 playground not loaded: {e}")
+
+# Optional: Include Zep playground if configured
+try:
+    from config import settings
+    if hasattr(settings, 'zep_api_key') and settings.zep_api_key:
+        from playground_zep import zep_router
+        app.include_router(zep_router, prefix="/api/playground-zep", tags=["playground-zep"])
+        logger.info("[MAIN] Zep playground enabled")
+except Exception as e:
+    logger.warning(f"[MAIN] Zep playground not loaded: {e}")
+
 # Startup event
 @app.on_event("startup")
 async def startup_event():

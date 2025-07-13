@@ -475,7 +475,7 @@ export default function Playground() {
         temperature: settings.temperature.toString()
       })
 
-      const eventSource = new EventSource(`${API_URL}/api/playground/mem0-sse?${params}`)
+      const eventSource = new EventSource(`${API_URL}/api/playground-mem0/sse?${params}`)
       let fullResponse = ''
       let detectedJson: string | null = null
 
@@ -565,7 +565,7 @@ export default function Playground() {
         temperature: settings.temperature.toString()
       })
 
-      const eventSource = new EventSource(`${API_URL}/api/playground/zep-sse?${params}`)
+      const eventSource = new EventSource(`${API_URL}/api/playground-zep/sse?${params}`)
       let fullResponse = ''
       let detectedJson: string | null = null
 
