@@ -37,6 +37,7 @@ except Exception as e:
 
 
 async def generate_zep_stream(
+    session_id: str,
     agent_slug: str,
     system_prompt: str,
     message: str,
@@ -50,8 +51,6 @@ async def generate_zep_stream(
         yield f"data: {json.dumps({'error': 'Zep not configured'})}\n\n"
         return
     
-    session_id = f"session_{uuid.uuid4()}"
-    
     try:
         # 1. Ensure user exists
         try:
@@ -63,12 +62,17 @@ async def generate_zep_stream(
             )
             logger.info(f"[ZEP] Created user: {user_id}")
         
-        # 2. Create new session
-        await zep_client.memory.add_session(
-            session_id=session_id,
-            user_id=user_id
-        )
-        logger.info(f"[ZEP] Created session: {session_id}")
+        # 2. Create session if doesn't exist
+        try:
+            await zep_client.memory.get_session(session_id)
+            logger.info(f"[ZEP] Using existing session: {session_id}")
+        except:
+            # Session doesn't exist, create it
+            await zep_client.memory.add_session(
+                session_id=session_id,
+                user_id=user_id
+            )
+            logger.info(f"[ZEP] Created new session: {session_id}")
         
         # 3. Get user memory context
         memory_context = ""
@@ -91,7 +95,7 @@ async def generate_zep_stream(
                 # Also add recent messages from this session (if any)
                 if memories.messages and len(memories.messages) > 0:
                     memory_context += "\n\nRecent messages in this session:\n"
-                    for msg in memories.messages[-5:]:  # Last 5 messages
+                    for msg in memories.messages:  # All messages
                         memory_context += f"{msg.role}: {msg.content}\n"
                     logger.info(f"[ZEP] Added {len(memories.messages)} session messages")
                 
@@ -153,6 +157,7 @@ async def generate_zep_stream(
 
 @zep_router.get("/sse")
 async def playground_zep_sse(
+    session_id: str = Query(...),
     agent_slug: str = Query(...),
     system_prompt: str = Query(...),
     message: str = Query(...),
@@ -163,6 +168,7 @@ async def playground_zep_sse(
     """Playground SSE endpoint with Zep memory"""
     return StreamingResponse(
         generate_zep_stream(
+            session_id=session_id,
             agent_slug=agent_slug,
             system_prompt=system_prompt,
             message=message,
@@ -177,3 +183,31 @@ async def playground_zep_sse(
             "Connection": "keep-alive",
         }
     )
+
+
+@zep_router.get("/sessions")
+async def get_user_sessions(user_id: str = Query(...)):
+    """Get all sessions for a user"""
+    if not zep_client:
+        return {"error": "Zep not configured"}
+    
+    try:
+        sessions = await zep_client.user.get_sessions(user_id=user_id)
+        return sessions
+    except Exception as e:
+        logger.error(f"[ZEP] Failed to get sessions: {e}")
+        return {"error": str(e)}
+
+
+@zep_router.get("/sessions/{session_id}/messages")
+async def get_session_messages(session_id: str):
+    """Get all messages from a session"""
+    if not zep_client:
+        return {"error": "Zep not configured"}
+    
+    try:
+        messages = await zep_client.memory.get_session_messages(session_id=session_id)
+        return messages
+    except Exception as e:
+        logger.error(f"[ZEP] Failed to get messages: {e}")
+        return {"error": str(e)}
