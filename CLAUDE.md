@@ -15,6 +15,13 @@ This file contains important information for Claude to remember across sessions.
 
 ### 📋 POZOSTAŁO DO ZROBIENIA:
 
+### 🔴 0. REFAKTORYZACJA PLAYGROUND - PILNE! [2025-07-13 22:45]
+- **Problem**: Kod Zep pomieszał się z Mem0 w playground.py
+- **Błąd**: AsyncMemoryClient (z Mem0) pojawia się w kodzie Zep
+- **Plan**: Rozdzielić na 3 niezależne pliki (playground.py, playground_mem0.py, playground_zep.py)
+- **Plik**: ZEP_REFACTOR_PLAN.md zawiera szczegółowy plan
+- **Czas**: 2-3 godziny
+
 
 ### 1. System logów w Admin Panel
 - Viewer błędów Mem0 (z fire-and-forget)
