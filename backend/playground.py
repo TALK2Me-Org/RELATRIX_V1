@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 import uuid
 try:
     from zep_cloud.client import AsyncZep
-    from zep_cloud import Message as ZepMessage, Session
+    from zep_cloud import Message as ZepMessage
     HAS_ZEP = True
 except ImportError:
     HAS_ZEP = False
@@ -436,12 +436,10 @@ async def playground_zep_sse(
                 logger.info(f"[PLAYGROUND ZEP] Created new user: {user_id}")
             
             # 2. Stwórz nową sesję dla tej rozmowy
-            session = Session(
+            await zep_client.memory.add_session(
                 session_id=session_id,
-                user_id=user_id,
-                metadata={"agent": agent_slug, "started_at": time.time()}
+                user_id=user_id
             )
-            await zep_client.memory.add_session(session)
             logger.info(f"[PLAYGROUND ZEP] Created new session: {session_id}")
             
             # 3. Pobierz kontekst z pamięci usera (nie sesji!)
