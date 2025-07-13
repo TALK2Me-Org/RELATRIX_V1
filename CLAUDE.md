@@ -22,6 +22,155 @@ This file contains important information for Claude to remember across sessions.
 - Walidacja unikalności slug przy tworzeniu
 - Lepsze komunikaty o błędach
 
+### 📊 OPTYMALIZACJE DO ZROBIENIA:
+
+#### 1. Łączenie API calls przy starcie chatu (30 min) 🚀
+- **Pliki**: backend/main.py, frontend/src/Chat.tsx, frontend/src/api.ts
+- **Problem**: 2 osobne zapytania przy starcie (getAgents + getSettings)
+- **Rozwiązanie**: 
+  - Nowy endpoint GET /api/init zwracający {agents, settings}
+  - Jeden call w Chat.tsx zamiast dwóch
+- **Implementacja**:
+  ```python
+  @app.get("/api/init")
+  async def get_init_data(db: Session = Depends(get_db)):
+      agents = db.query(Agent).filter(Agent.is_active == True).all()
+      return {
+          "agents": agents,
+          "settings": system_settings
+      }
+  ```
+  - W Chat.tsx: zamienić loadData() na jeden getInitData()
+  - W api.ts: dodać `getInitData()` function
+
+#### 2. Indeksy w bazie danych (30 min) 🗄️
+- **Plik**: backend/database.py lub nowy endpoint migracyjny
+- **Problem**: Brak indeksu na agents.slug (wolne wyszukiwanie)
+- **Rozwiązanie**: 
+  ```python
+  # Dodać endpoint w agents.py:
+  @agents_router.post("/migrate-indexes")
+  async def add_indexes(db: Session = Depends(get_db)):
+      db.execute(text("CREATE INDEX IF NOT EXISTS idx_agents_slug ON agents(slug)"))
+      db.execute(text("CREATE INDEX IF NOT EXISTS idx_agents_is_active ON agents(is_active)"))
+      db.commit()
+  ```
+- **Wykonać przez Admin Panel lub curl po deploy**
+
+#### 3. Code splitting dla Admin Panel (1h) 📦
+- **Pliki**: frontend/src/App.tsx
+- **Problem**: Admin ładuje się dla wszystkich (niepotrzebne 200KB)
+- **Rozwiązanie**: 
+  ```typescript
+  // Zamiast: import AdminNew from './AdminNew'
+  const AdminNew = lazy(() => import('./AdminNew'))
+  
+  // W Route:
+  <Suspense fallback={<div>Loading admin...</div>}>
+    <AdminNew />
+  </Suspense>
+  ```
+- **Podobnie dla**: Auth.tsx gdy user jest zalogowany
+
+#### 4. Optymalizacja Mem0 - kolejka zadań (2-3h) 🧠
+- **Pliki**: backend/memory_service.py, backend/chat.py
+- **Problem**: Unlimited fire-and-forget tasks mogą zapchać serwer
+- **Rozwiązanie kompleksowe**:
+  ```python
+  # memory_service.py
+  import asyncio
+  from functools import lru_cache
+  from datetime import datetime, timedelta
+  
+  # Kolejka zadań
+  memory_queue = asyncio.Queue(maxsize=10)
+  
+  # Cache dla search z TTL
+  @lru_cache(maxsize=100)
+  def cached_search(query_hash: str, user_id: str):
+      # Zwraca (results, timestamp)
+      pass
+  
+  # Worker do przetwarzania
+  async def memory_worker():
+      while True:
+          task = await memory_queue.get()
+          try:
+              await add_memory_internal(task['messages'], task['user_id'])
+          except Exception as e:
+              logger.error(f"Memory worker error: {e}")
+  
+  # Zmodyfikowana funkcja add_memory
+  async def add_memory(messages, user_id):
+      try:
+          await memory_queue.put({
+              'messages': messages,
+              'user_id': user_id
+          }, timeout=1.0)
+      except asyncio.QueueFull:
+          logger.warning("Memory queue full, skipping save")
+  ```
+- **Startować worker w main.py przy starcie**
+
+#### 5. Buforowanie React updates (1-2h) ⚛️
+- **Plik**: frontend/src/Chat.tsx
+- **Problem**: Re-render na każdy chunk (100+ razy na wiadomość)
+- **Rozwiązanie krok po kroku**:
+  ```typescript
+  // 1. Bufor dla chunków
+  const chunkBuffer = useRef('')
+  const flushTimer = useRef<NodeJS.Timeout>()
+  
+  const flushBuffer = () => {
+    if (chunkBuffer.current) {
+      setMessages(prev => {
+        const updated = [...prev]
+        updated[updated.length - 1].content += chunkBuffer.current
+        return updated
+      })
+      chunkBuffer.current = ''
+    }
+  }
+  
+  // 2. W onChunk zamiast bezpośredniego update:
+  chunkBuffer.current += chunk
+  clearTimeout(flushTimer.current)
+  flushTimer.current = setTimeout(flushBuffer, 100)
+  
+  // 3. React.memo dla wiadomości
+  const Message = React.memo(({ message }) => (
+    <div>...</div>
+  ))
+  ```
+
+#### 6. Auto-reconnect SSE (2h) 🔄
+- **Plik**: frontend/src/api.ts
+- **Problem**: Połączenie pada = trzeba refresh
+- **Rozwiązanie z retry logic**:
+  ```typescript
+  let retryCount = 0
+  const maxRetries = 5
+  
+  const connectSSE = async () => {
+    try {
+      const eventSource = new EventSource(url)
+      retryCount = 0 // Reset on success
+      
+      eventSource.onerror = () => {
+        eventSource.close()
+        if (retryCount < maxRetries) {
+          const delay = Math.min(1000 * Math.pow(2, retryCount), 10000)
+          setTimeout(connectSSE, delay)
+          retryCount++
+        }
+      }
+    } catch (error) {
+      // Handle error
+    }
+  }
+  ```
+- **Dodać status indicator**: 🟢 Connected | 🟡 Reconnecting | 🔴 Offline
+
 ## Pracuję z Nati! 👋
 Nati (Natalia Rybarczyk) jest vibecoderką i potrzebuje prostych wyjaśnień technicznych.
 
