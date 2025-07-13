@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from typing import Optional
 import logging
 import json
+import asyncio
 from openai import AsyncOpenAI
 
 from database import get_db, Agent
@@ -185,7 +186,7 @@ async def stream_chat(
             
             messages.append({"role": "user", "content": message})
             
-            # Stream from OpenAI
+            # Stream response from OpenAI using agent's specific model/temperature
             stream = await openai.chat.completions.create(
                 model=agent.model or settings.openai_model,
                 messages=messages,
@@ -204,7 +205,8 @@ async def stream_chat(
                     full_response += content
                     chunk_buffer += content
                     
-                    # Check if buffer might contain JSON pattern
+                    # Real-time JSON detection during streaming
+                    # This allows immediate agent switching without waiting for full response
                     if '{"agent"' in chunk_buffer:
                         # Check for complete JSON pattern
                         agent_match = extract_agent_slug(chunk_buffer)
@@ -214,11 +216,11 @@ async def stream_chat(
                                 new_agent = agent_match
                                 logger.info(f"[AGENT_SWITCH] JSON detection found: {new_agent}")
                                 logger.debug(f"[AGENT_SWITCH] Original buffer: {chunk_buffer}")
-                            # Remove JSON from buffer
+                            # Remove JSON from buffer before sending to client
                             chunk_buffer = remove_agent_json(chunk_buffer)
                             logger.debug(f"[AGENT_SWITCH] Cleaned buffer: {chunk_buffer}")
                         elif not chunk_buffer.strip().endswith('}'):
-                            # Partial JSON, wait for more content
+                            # Partial JSON detected, wait for more content
                             logger.debug(f"[AGENT_SWITCH] Partial JSON detected, waiting for more: {chunk_buffer}")
                             continue
                     
@@ -237,16 +239,19 @@ async def stream_chat(
             # Clean response and save to memory
             clean_response = remove_agent_json(full_response)
             
+            # Save memory in background - don't block the user
             if user_id != "anonymous":
-                logger.info(f"[CHAT] Saving memory for user: {user_id}")
-                memory_result = await add_memory(
+                logger.info(f"[CHAT] Scheduling memory save for user: {user_id}")
+                # Fire and forget pattern - save memory without blocking response
+                # This removes ~1-2 second delay from Mem0 API call
+                asyncio.create_task(add_memory(
                     messages=[
                         {"role": "user", "content": message},
                         {"role": "assistant", "content": clean_response}
                     ],
                     user_id=user_id
-                )
-                logger.info(f"[CHAT] Memory save result: {memory_result}")
+                ))
+                # Note: Errors are logged inside add_memory function
             
             # Check full response for JSON if not found during streaming
             if not new_agent:
