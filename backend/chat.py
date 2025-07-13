@@ -229,8 +229,10 @@ async def stream_chat(
             
             # Log full response for debugging
             logger.debug(f"[CHAT] Full response length: {len(full_response)}")
+            logger.debug(f"[CHAT] Last 200 chars of response: ...{full_response[-200:]}")
+            logger.debug(f"[CHAT] Response contains JSON: {'{"agent"' in full_response}")
             if new_agent:
-                logger.info(f"[CHAT] Agent switch detected in response: {new_agent}")
+                logger.info(f"[CHAT] Agent switch detected during streaming: {new_agent}")
             
             # Clean response and save to memory
             clean_response = remove_agent_json(full_response)
@@ -246,17 +248,27 @@ async def stream_chat(
                 )
                 logger.info(f"[CHAT] Memory save result: {memory_result}")
             
+            # Check full response for JSON if not found during streaming
+            if not new_agent:
+                detected_in_full = extract_agent_slug(full_response)
+                if detected_in_full:
+                    new_agent = detected_in_full
+                    logger.info(f"[AGENT_SWITCH] Found JSON in complete response: {new_agent}")
+            
             # Check fallback only if enabled and no JSON agent switch was detected
             from main import system_settings
             if not new_agent and system_settings.get("enable_fallback", True):
-                logger.info(f"[AGENT_SWITCH] No JSON detected, trying fallback GPT-3.5")
+                logger.info(f"[AGENT_SWITCH] No JSON detected in response, checking with fallback GPT-3.5...")
+                logger.info(f"[AGENT_SWITCH] Starting fallback check for message: '{message[:50]}...'")
                 new_agent = await should_switch_agent(message, agent_slug)
                 if new_agent:
-                    logger.info(f"[AGENT_SWITCH] Fallback suggested: {new_agent}")
+                    logger.info(f"[AGENT_SWITCH] Fallback suggested agent switch to: {new_agent}")
+                else:
+                    logger.info(f"[AGENT_SWITCH] Fallback decided to stay with current agent")
             elif not new_agent:
-                logger.info(f"[AGENT_SWITCH] Fallback disabled by system settings")
+                logger.info(f"[AGENT_SWITCH] Fallback is disabled by system settings - staying with current agent")
             else:
-                logger.info(f"[AGENT_SWITCH] Skipping fallback - JSON detection already found: {new_agent}")
+                logger.info(f"[AGENT_SWITCH] Skipping fallback - already found JSON switch to: {new_agent}")
             
             # Send switch signal
             logger.info(f"[AGENT_SWITCH] Final decision: {new_agent or 'none'}")
