@@ -2,6 +2,27 @@
 
 This file contains important information for Claude to remember across sessions.
 
+## 🚨 DO ZROBIENIA - Następna sesja (2025-07-13):
+
+### 1. Tworzenie nowych agentów w Admin Panel
+- Dodać przycisk "Nowy Agent" w AgentManager.tsx
+- Modal/formularz z polami: nazwa, slug, system prompt, model, temperature
+- Wykorzystać istniejący endpoint `POST /api/agents/`
+- Funkcja createAgent w api.ts
+- Po utworzeniu: odświeżyć listę, wybrać nowego agenta
+
+### 2. Wybór domyślnego agenta
+- Dodać ustawienie w Admin Panel (System Settings?)
+- Zapisywać który agent startuje domyślnie w chacie
+- Chat.tsx powinien pobierać to ustawienie zamiast hardcoded "misunderstanding_protector"
+- Może localStorage lub backend setting
+
+### 3. System logów w Admin Panel
+- Viewer błędów Mem0 (z fire-and-forget)
+- Statystyki performance
+- Real-time monitoring
+- Export logów
+
 ## Pracuję z Nati! 👋
 Nati (Natalia Rybarczyk) jest vibecoderką i potrzebuje prostych wyjaśnień technicznych.
 
