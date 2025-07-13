@@ -20,11 +20,30 @@ from memory_service import search_memories, add_memory
 
 logger = logging.getLogger(__name__)
 
+# Zep imports
+import uuid
+try:
+    from zep_cloud.client import AsyncZep
+    from zep_cloud import Message as ZepMessage, Session
+    HAS_ZEP = True
+except ImportError:
+    HAS_ZEP = False
+    logger.warning("[ZEP] zep-cloud package not installed")
+
 # Router
 playground_router = APIRouter()
 
 # OpenAI client
 openai = AsyncOpenAI(api_key=settings.openai_api_key)
+
+# Zep client - prosty, bez wrapperów
+zep_client = None
+if HAS_ZEP and settings.zep_api_key:
+    try:
+        zep_client = AsyncZep(api_key=settings.zep_api_key)
+        logger.info("[ZEP] Client initialized")
+    except Exception as e:
+        logger.error(f"[ZEP] Init failed: {e}")
 
 
 class PlaygroundSettings(BaseModel):
@@ -367,6 +386,155 @@ async def playground_mem0_sse(
             
         except Exception as e:
             logger.error(f"[PLAYGROUND MEM0] Error: {e}")
+            error_data = {"error": str(e)}
+            yield f"data: {json.dumps(error_data)}\n\n"
+    
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"
+        }
+    )# This file will be appended to playground.py
+
+@playground_router.get("/zep-sse")
+async def playground_zep_sse(
+    agent_slug: str = Query(...),
+    system_prompt: str = Query(...),
+    message: str = Query(...),
+    user_id: str = Query(...),  # Test user ID
+    model: str = Query("gpt-4"),
+    temperature: float = Query(0.7),
+    db: Session = Depends(get_db)
+):
+    """
+    SSE endpoint for Zep memory testing
+    Each conversation gets a new session, but same user
+    """
+    async def generate():
+        if not zep_client:
+            yield f"data: {json.dumps({'error': 'Zep not configured'})}\n\n"
+            return
+            
+        start_time = time.time()
+        session_id = f"session_{uuid.uuid4()}"  # Nowa sesja dla każdej rozmowy
+        
+        try:
+            logger.info(f"[PLAYGROUND ZEP] User: {user_id}, Session: {session_id}, Agent: {agent_slug}")
+            
+            # 1. Najpierw upewnij się że user istnieje
+            try:
+                await zep_client.user.get(user_id=user_id)
+            except:
+                # Twórz nowego usera jeśli nie istnieje
+                await zep_client.user.add(
+                    user_id=user_id,
+                    metadata={"source": "playground", "created_at": time.time()}
+                )
+                logger.info(f"[PLAYGROUND ZEP] Created new user: {user_id}")
+            
+            # 2. Stwórz nową sesję dla tej rozmowy
+            session = Session(
+                session_id=session_id,
+                user_id=user_id,
+                metadata={"agent": agent_slug, "started_at": time.time()}
+            )
+            await zep_client.memory.add_session(session)
+            logger.info(f"[PLAYGROUND ZEP] Created new session: {session_id}")
+            
+            # 3. Pobierz kontekst z pamięci usera (nie sesji!)
+            memory_context = ""
+            memory_count = 0
+            
+            try:
+                # memory.get używa user_id, nie session_id
+                result = await zep_client.memory.get(
+                    user_id=user_id,
+                    min_rating=0.5  # Tylko ważne fakty
+                )
+                
+                if result and result.context:
+                    memory_context = f"\n\nRelevant context:\n{result.context}"
+                    memory_count = len(result.facts) if result.facts else 0
+                    logger.info(f"[PLAYGROUND ZEP] Found context with {memory_count} facts")
+                    
+            except Exception as e:
+                logger.info(f"[PLAYGROUND ZEP] No context yet for user: {e}")
+            
+            # 4. Build messages with memory context
+            enhanced_prompt = system_prompt + memory_context
+            messages = [
+                {"role": "system", "content": enhanced_prompt},
+                {"role": "user", "content": message}
+            ]
+            
+            # 5. Stream from OpenAI
+            stream = await openai.chat.completions.create(
+                model=model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=1000,
+                stream=True
+            )
+            
+            full_response = ""
+            
+            async for chunk in stream:
+                if chunk.choices[0].delta.content:
+                    content = chunk.choices[0].delta.content
+                    full_response += content
+                    
+                    # Send chunk
+                    data = {
+                        "chunk": content,
+                        "memory_count": memory_count
+                    }
+                    yield f"data: {json.dumps(data)}\n\n"
+            
+            # 6. Save conversation to Zep session
+            try:
+                zep_messages = [
+                    ZepMessage(
+                        role="human",
+                        content=message,
+                        role_type="user"
+                    ),
+                    ZepMessage(
+                        role="ai", 
+                        content=full_response,
+                        role_type="assistant"
+                    )
+                ]
+                
+                await zep_client.memory.add(
+                    session_id=session_id,
+                    messages=zep_messages
+                )
+                logger.info("[PLAYGROUND ZEP] Messages saved to session")
+                
+            except Exception as e:
+                logger.error(f"[PLAYGROUND ZEP] Failed to save messages: {e}")
+            
+            # Detect JSON
+            detected_json = extract_agent_slug(full_response)
+            
+            # Send final metadata
+            final_data = {
+                "detected_json": f'{{"agent": "{detected_json}"}}' if detected_json else None,
+                "agent_switch": detected_json,
+                "memory_count": memory_count,
+                "processing_time": f"{(time.time() - start_time):.2f}s",
+                "session_id": session_id  # Może się przydać do debugowania
+            }
+            yield f"data: {json.dumps(final_data)}\n\n"
+            
+            # Done signal
+            yield f"data: [DONE]\n\n"
+            
+        except Exception as e:
+            logger.error(f"[PLAYGROUND ZEP] Error: {e}")
             error_data = {"error": str(e)}
             yield f"data: {json.dumps(error_data)}\n\n"
     

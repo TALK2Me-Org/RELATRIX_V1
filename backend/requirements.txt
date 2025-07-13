@@ -8,6 +8,9 @@ openai>=1.33.0
 # Mem0
 mem0ai>=0.0.13
 
+# Zep
+zep-cloud
+
 # Supabase
 supabase>=2.0.1
 

@@ -147,9 +147,13 @@ export default function Playground() {
   const [selectedTestUser, setSelectedTestUser] = useState<TestUser | null>(null)
   const [showUserModal, setShowUserModal] = useState(false)
   const [splitView, setSplitView] = useState(false)
+  const [tripleView, setTripleView] = useState(false)
   const [mem0Messages, setMem0Messages] = useState<Message[]>([])
   const [mem0Streaming, setMem0Streaming] = useState('')
   const [mem0Loading, setMem0Loading] = useState(false)
+  const [zepMessages, setZepMessages] = useState<Message[]>([])
+  const [zepStreaming, setZepStreaming] = useState('')
+  const [zepLoading, setZepLoading] = useState(false)
   
   const [settings, setSettings] = useState<PlaygroundSettings>({
     model: 'gpt-4',
@@ -326,12 +330,19 @@ export default function Playground() {
     if (splitView) {
       setMem0Messages(prev => [...prev, userMessage])
     }
+    if (tripleView) {
+      setZepMessages(prev => [...prev, userMessage])
+    }
     setInput('')
     setLoading(true)
     setStreamingContent('')
     if (splitView) {
       setMem0Loading(true)
       setMem0Streaming('')
+    }
+    if (tripleView) {
+      setZepLoading(true)
+      setZepStreaming('')
     }
 
     try {
@@ -435,6 +446,11 @@ export default function Playground() {
       if (splitView && selectedTestUser) {
         startMem0Stream(input)
       }
+      
+      // Start Zep stream if triple view
+      if (tripleView && selectedTestUser) {
+        startZepStream(input)
+      }
 
     } catch (error) {
       console.error('Playground error:', error)
@@ -536,13 +552,107 @@ export default function Playground() {
     }
   }
 
+  const startZepStream = async (message: string) => {
+    if (!selectedAgent || !selectedTestUser) return
+    
+    try {
+      const params = new URLSearchParams({
+        agent_slug: selectedAgent.slug,
+        system_prompt: systemPrompt,
+        message: message,
+        user_id: selectedTestUser.id,  // Zep używa tego jako session_id
+        model: settings.model,
+        temperature: settings.temperature.toString()
+      })
+
+      const eventSource = new EventSource(`${API_URL}/api/playground/zep-sse?${params}`)
+      let fullResponse = ''
+      let detectedJson: string | null = null
+
+      eventSource.onmessage = (event) => {
+        if (event.data === '[DONE]') {
+          eventSource.close()
+          
+          const assistantMessage: Message = {
+            role: 'assistant',
+            content: fullResponse,
+            raw_content: fullResponse,
+            detected_json: detectedJson || undefined
+          }
+
+          setZepMessages(prev => [...prev, assistantMessage])
+          setZepStreaming('')
+          setZepLoading(false)
+          
+          // Update test user history
+          const updatedUser = {
+            ...selectedTestUser,
+            history: [...selectedTestUser.history, 
+              { role: 'user', content: message },
+              assistantMessage
+            ],
+            last_used: Date.now()
+          }
+          
+          setSelectedTestUser(updatedUser)
+          
+          const users = JSON.parse(localStorage.getItem('playground_users') || '{}')
+          users[updatedUser.id] = updatedUser
+          localStorage.setItem('playground_users', JSON.stringify(users))
+          
+          return
+        }
+
+        try {
+          const data = JSON.parse(event.data)
+          
+          if (data.error) {
+            throw new Error(data.error)
+          }
+          
+          if (data.chunk) {
+            fullResponse += data.chunk
+            setZepStreaming(fullResponse)
+          }
+
+          if (data.detected_json) {
+            detectedJson = data.detected_json
+          }
+        } catch (e) {
+          console.error('Zep parse error:', e)
+        }
+      }
+
+      eventSource.onerror = (error) => {
+        console.error('Zep SSE error:', error)
+        eventSource.close()
+        setZepMessages(prev => [...prev, {
+          role: 'assistant',
+          content: 'Error: Zep connection failed'
+        }])
+        setZepStreaming('')
+        setZepLoading(false)
+      }
+
+    } catch (error) {
+      console.error('Zep error:', error)
+      setZepMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'Error: Failed to get Zep response'
+      }])
+      setZepLoading(false)
+    }
+  }
+
   const clearChat = () => {
     setMessages([])
     setMem0Messages([])
+    setZepMessages([])
     setCurrentDebug(null)
     setTotalTokens(0)
     setStreamingContent('')
     setMem0Streaming('')
+    setZepStreaming('')
   }
 
 
@@ -570,16 +680,49 @@ export default function Playground() {
             </div>
             
             {/* Test User Controls */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
               <label className="flex items-center gap-2">
                 <input
-                  type="checkbox"
-                  checked={splitView}
-                  onChange={(e) => setSplitView(e.target.checked)}
+                  type="radio"
+                  name="viewMode"
+                  checked={!splitView}
+                  onChange={() => {
+                    setSplitView(false)
+                    setTripleView(false)
+                  }}
+                  className="rounded"
+                />
+                <span className="text-sm">Single View</span>
+              </label>
+              
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="viewMode"
+                  checked={splitView && !tripleView}
+                  onChange={() => {
+                    setSplitView(true)
+                    setTripleView(false)
+                  }}
                   className="rounded"
                 />
                 <span className="text-sm">Split View (Mem0)</span>
                 <HelpIcon tooltip="Porównaj odpowiedzi z i bez pamięci Mem0" />
+              </label>
+              
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="viewMode"
+                  checked={tripleView}
+                  onChange={() => {
+                    setSplitView(true)
+                    setTripleView(true)
+                  }}
+                  className="rounded"
+                />
+                <span className="text-sm">Triple View (+Zep)</span>
+                <HelpIcon tooltip="Porównaj wszystkie 3 systemy jednocześnie" />
               </label>
               
               {splitView && (
@@ -767,7 +910,61 @@ export default function Playground() {
         {/* Middle Column - Chat(s) */}
         <div className="flex-1 flex flex-col overflow-hidden">
           <div className="flex-1 flex overflow-hidden">
-            {splitView ? (
+            {tripleView ? (
+              // Triple View - 3 kolumny
+              <div className="flex-1 grid grid-cols-3 gap-4 min-h-0">
+                {/* Left - No Memory */}
+                <div className="flex-1 flex flex-col min-h-0">
+                  <div className="bg-white border-b px-4 py-3 flex items-center justify-between flex-shrink-0">
+                    <h2 className="font-medium">No Memory</h2>
+                  </div>
+                  <div className="flex-1 overflow-hidden flex flex-col">
+                    <ChatMessages
+                      messages={messages}
+                      streamingContent={streamingContent}
+                      loading={loading}
+                      showJson={settings.show_json}
+                    />
+                  </div>
+                </div>
+                
+                {/* Middle - Mem0 */}
+                <div className="flex-1 flex flex-col min-h-0">
+                  <div className="bg-white border-b px-4 py-3 flex items-center justify-between flex-shrink-0">
+                    <div className="flex items-center gap-2">
+                      <h2 className="font-medium">With Mem0</h2>
+                      <HelpIcon tooltip="Chat używający pamięci Mem0" />
+                    </div>
+                  </div>
+                  <div className="flex-1 overflow-hidden flex flex-col">
+                    <ChatMessages
+                      messages={mem0Messages}
+                      streamingContent={mem0Streaming}
+                      loading={mem0Loading}
+                      showJson={settings.show_json}
+                    />
+                  </div>
+                </div>
+                
+                {/* Right - Zep */}
+                <div className="flex-1 flex flex-col min-h-0">
+                  <div className="bg-white border-b px-4 py-3 flex items-center justify-between flex-shrink-0">
+                    <div className="flex items-center gap-2">
+                      <h2 className="font-medium">With Zep</h2>
+                      <HelpIcon tooltip="Chat używający pamięci Zep" />
+                    </div>
+                  </div>
+                  <div className="flex-1 overflow-hidden flex flex-col">
+                    <ChatMessages
+                      messages={zepMessages}
+                      streamingContent={zepStreaming}
+                      loading={zepLoading}
+                      showJson={settings.show_json}
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : splitView ? (
               // Split view - two chats side by side
               <>
                 {/* Left Chat - With Context */}

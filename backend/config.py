@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     # Mem0
     mem0_api_key: str = os.getenv("MEM0_API_KEY", "")
     
+    # Zep
+    zep_api_key: Optional[str] = os.getenv("ZEP_API_KEY", None)
+    
     # Supabase
     supabase_url: str = os.getenv("SUPABASE_URL", "")
     supabase_anon_key: str = os.getenv("SUPABASE_ANON_KEY", "")
