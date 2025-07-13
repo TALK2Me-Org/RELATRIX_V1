@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getAgents, updateAgent, createAgent, deleteAgent } from '../api'
+import { getAgents, updateAgent, createAgent, deleteAgent, getSettings, updateSettings } from '../api'
 import { HelpIcon } from '../components/Tooltip'
 import Modal from '../components/Modal'
 
@@ -29,6 +29,7 @@ export default function AgentManager() {
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [defaultAgent, setDefaultAgent] = useState('misunderstanding_protector')
   const [newAgent, setNewAgent] = useState({
     slug: '',
     name: '',
@@ -40,6 +41,7 @@ export default function AgentManager() {
   useEffect(() => {
     loadAgents()
     loadModels()
+    loadSettings()
   }, [])
 
   const loadAgents = async () => {
@@ -73,6 +75,25 @@ export default function AgentManager() {
         { id: 'gpt-4', name: 'GPT-4', description: 'Default' },
         { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', description: 'Default' }
       ])
+    }
+  }
+
+  const loadSettings = async () => {
+    try {
+      const settings = await getSettings()
+      setDefaultAgent(settings.default_agent || 'misunderstanding_protector')
+    } catch (error) {
+      console.error('Failed to load settings:', error)
+    }
+  }
+
+  const handleSetDefault = async (slug: string) => {
+    try {
+      await updateSettings({ default_agent: slug })
+      setDefaultAgent(slug)
+    } catch (error) {
+      console.error('Failed to update default agent:', error)
+      alert('Failed to update default agent')
     }
   }
 
@@ -171,6 +192,13 @@ export default function AgentManager() {
             <div className="space-y-2">
               {agents.map(agent => (
                 <div key={agent.id} className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="defaultAgent"
+                    checked={defaultAgent === agent.slug}
+                    onChange={() => handleSetDefault(agent.slug)}
+                    className="mr-2"
+                  />
                   <button
                     onClick={() => handleSelectAgent(agent)}
                     className={`flex-1 text-left px-3 py-2 rounded-lg transition-colors ${

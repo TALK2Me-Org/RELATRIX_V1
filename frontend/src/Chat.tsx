@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { streamChat } from './api'
+import { streamChat, getSettings } from './api'
 
 interface Message {
   id: string
@@ -39,6 +39,21 @@ export default function Chat({ user, onLogout }: Props) {
   useEffect(() => {
     scrollToBottom()
   }, [messages])
+
+  useEffect(() => {
+    // Load default agent from settings
+    const loadDefaultAgent = async () => {
+      try {
+        const settings = await getSettings()
+        if (settings.default_agent) {
+          setCurrentAgent(settings.default_agent)
+        }
+      } catch (error) {
+        console.error('Failed to load default agent:', error)
+      }
+    }
+    loadDefaultAgent()
+  }, [])
 
   const handleSend = async () => {
     if (!input.trim() || isStreaming) return

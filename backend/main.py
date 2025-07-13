@@ -127,7 +127,8 @@ from database import seed_agents
 
 # System settings (in-memory for simplicity)
 system_settings = {
-    "enable_fallback": True
+    "enable_fallback": True,
+    "default_agent": "misunderstanding_protector"
 }
 
 # Settings endpoints
