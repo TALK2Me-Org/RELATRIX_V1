@@ -81,10 +81,19 @@ async def generate_zep_stream(
                 session_id=session_id
             )
             
-            if memories and memories.context:
-                memory_context = f"\n\n{memories.context}"
-                memory_count = len(memories.facts) if hasattr(memories, 'facts') and memories.facts else 0
-                logger.info(f"[ZEP] Found context with {memory_count} facts")
+            if memories:
+                # Add context (facts from user's entire history)
+                if memories.context:
+                    memory_context += f"\n\n{memories.context}"
+                    memory_count = len(memories.facts) if hasattr(memories, 'facts') and memories.facts else 0
+                    logger.info(f"[ZEP] Found context with {memory_count} facts")
+                
+                # Also add recent messages from this session (if any)
+                if memories.messages and len(memories.messages) > 0:
+                    memory_context += "\n\nRecent messages in this session:\n"
+                    for msg in memories.messages[-5:]:  # Last 5 messages
+                        memory_context += f"{msg.role}: {msg.content}\n"
+                    logger.info(f"[ZEP] Added {len(memories.messages)} session messages")
                 
         except Exception as e:
             logger.debug(f"[ZEP] No memory yet: {e}")
