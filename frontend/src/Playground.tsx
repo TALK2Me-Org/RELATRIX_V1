@@ -172,7 +172,6 @@ export default function Playground() {
   // Session management
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [sessions, setSessions] = useState<Session[]>([])
-  const [showSessions, setShowSessions] = useState(true)
   
   const [settings, setSettings] = useState<PlaygroundSettings>({
     model: 'gpt-4',
