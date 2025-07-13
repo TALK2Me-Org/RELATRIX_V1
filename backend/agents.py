@@ -132,6 +132,24 @@ async def seed_default_agents(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@agents_router.delete("/{slug}")
+async def delete_agent(
+    slug: str,
+    user: dict = Depends(require_user),
+    db: Session = Depends(get_db)
+):
+    """Delete agent by slug (requires auth)"""
+    agent = db.query(Agent).filter(Agent.slug == slug).first()
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    
+    db.delete(agent)
+    db.commit()
+    
+    logger.info(f"Agent deleted: {slug} by user {user['email']}")
+    return {"message": "Agent deleted successfully"}
+
+
 @agents_router.post("/migrate-model-columns")
 async def migrate_model_columns(
     user: dict = Depends(require_user),

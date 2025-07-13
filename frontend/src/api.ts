@@ -64,6 +64,22 @@ export const updateAgent = async (slug: string, data: any) => {
   return response.data
 }
 
+export const createAgent = async (data: {
+  slug: string
+  name: string
+  system_prompt: string
+  model: string
+  temperature: number
+}) => {
+  const response = await api.post('/api/agents/', data)
+  return response.data
+}
+
+export const deleteAgent = async (slug: string) => {
+  const response = await api.delete(`/api/agents/${slug}`)
+  return response.data
+}
+
 // Settings endpoints
 export const getSettings = async () => {
   const response = await api.get('/api/settings')

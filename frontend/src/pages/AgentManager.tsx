@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
-import { getAgents, updateAgent } from '../api'
+import { getAgents, updateAgent, createAgent, deleteAgent } from '../api'
 import { HelpIcon } from '../components/Tooltip'
+import Modal from '../components/Modal'
 
 interface Agent {
   id: string
@@ -27,6 +28,14 @@ export default function AgentManager() {
   const [models, setModels] = useState<Model[]>([])
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [newAgent, setNewAgent] = useState({
+    slug: '',
+    name: '',
+    system_prompt: '',
+    model: 'gpt-4-turbo-preview',
+    temperature: 0.7
+  })
 
   useEffect(() => {
     loadAgents()
@@ -98,6 +107,40 @@ export default function AgentManager() {
     }
   }
 
+  const handleCreate = async () => {
+    try {
+      const created = await createAgent(newAgent)
+      await loadAgents()
+      setSelectedAgent(created)
+      setEditedPrompt(created.system_prompt)
+      setEditedModel(created.model)
+      setEditedTemperature(created.temperature)
+      setShowCreateModal(false)
+      setNewAgent({
+        slug: '',
+        name: '',
+        system_prompt: '',
+        model: 'gpt-4-turbo-preview',
+        temperature: 0.7
+      })
+    } catch (error: any) {
+      alert(`Failed to create agent: ${error.response?.data?.detail || error.message}`)
+    }
+  }
+
+  const handleDelete = async (slug: string) => {
+    try {
+      await deleteAgent(slug)
+      await loadAgents()
+      if (selectedAgent?.slug === slug) {
+        setSelectedAgent(null)
+        setEditedPrompt('')
+      }
+    } catch (error) {
+      alert('Failed to delete agent')
+    }
+  }
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <div className="mb-6">
@@ -111,7 +154,15 @@ export default function AgentManager() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Agent List */}
         <div className="bg-white rounded-lg shadow p-4">
-          <h2 className="text-lg font-semibold mb-4">Lista Agentów</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold">Lista Agentów</h2>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700"
+            >
+              Nowy Agent
+            </button>
+          </div>
           {loading ? (
             <p className="text-gray-500">Ładowanie...</p>
           ) : agents.length === 0 ? (
@@ -119,18 +170,25 @@ export default function AgentManager() {
           ) : (
             <div className="space-y-2">
               {agents.map(agent => (
-                <button
-                  key={agent.id}
-                  onClick={() => handleSelectAgent(agent)}
-                  className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${
-                    selectedAgent?.id === agent.id
-                      ? 'bg-blue-100 text-blue-900'
-                      : 'hover:bg-gray-100'
-                  }`}
-                >
-                  <div className="font-medium">{agent.name}</div>
-                  <div className="text-sm text-gray-500">{agent.slug}</div>
-                </button>
+                <div key={agent.id} className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleSelectAgent(agent)}
+                    className={`flex-1 text-left px-3 py-2 rounded-lg transition-colors ${
+                      selectedAgent?.id === agent.id
+                        ? 'bg-blue-100 text-blue-900'
+                        : 'hover:bg-gray-100'
+                    }`}
+                  >
+                    <div className="font-medium">{agent.name}</div>
+                    <div className="text-sm text-gray-500">{agent.slug}</div>
+                  </button>
+                  <button
+                    onClick={() => handleDelete(agent.slug)}
+                    className="px-2 py-1 text-red-600 hover:bg-red-50 rounded"
+                  >
+                    Usuń
+                  </button>
+                </div>
               ))}
             </div>
           )}
@@ -216,6 +274,101 @@ export default function AgentManager() {
           )}
         </div>
       </div>
+
+      {/* Create Agent Modal */}
+      <Modal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        title="Nowy Agent"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Nazwa
+            </label>
+            <input
+              type="text"
+              value={newAgent.name}
+              onChange={(e) => setNewAgent({ ...newAgent, name: e.target.value })}
+              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="np. Pomocnik Emocjonalny"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Slug (unikalny identyfikator)
+            </label>
+            <input
+              type="text"
+              value={newAgent.slug}
+              onChange={(e) => setNewAgent({ ...newAgent, slug: e.target.value.toLowerCase().replace(/\s+/g, '_') })}
+              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="np. emotional_helper"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Model AI
+            </label>
+            <select
+              value={newAgent.model}
+              onChange={(e) => setNewAgent({ ...newAgent, model: e.target.value })}
+              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {models.map(model => (
+                <option key={model.id} value={model.id}>
+                  {model.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Temperature: {newAgent.temperature}
+            </label>
+            <input
+              type="range"
+              min="0"
+              max="1.5"
+              step="0.1"
+              value={newAgent.temperature}
+              onChange={(e) => setNewAgent({ ...newAgent, temperature: parseFloat(e.target.value) })}
+              className="w-full"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              System Prompt
+            </label>
+            <textarea
+              value={newAgent.system_prompt}
+              onChange={(e) => setNewAgent({ ...newAgent, system_prompt: e.target.value })}
+              className="w-full h-40 px-3 py-2 border rounded-lg font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Instrukcje dla agenta..."
+            />
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={() => setShowCreateModal(false)}
+              className="px-4 py-2 text-gray-600 hover:text-gray-800"
+            >
+              Anuluj
+            </button>
+            <button
+              onClick={handleCreate}
+              disabled={!newAgent.name || !newAgent.slug || !newAgent.system_prompt}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            >
+              Utwórz Agenta
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }
