@@ -45,6 +45,20 @@ interface TestUser {
   history: Message[]
 }
 
+interface Session {
+  id: string
+  user_id: string
+  title: string
+  created_at: number
+  last_message_at?: number
+  message_count: number
+  available_modes: {
+    context: boolean
+    mem0: boolean
+    zep: boolean
+  }
+}
+
 // Chat Messages Component
 const ChatMessages = ({ messages, streamingContent, loading, showJson }: {
   messages: Message[]
@@ -155,6 +169,11 @@ export default function Playground() {
   const [zepStreaming, setZepStreaming] = useState('')
   const [zepLoading, setZepLoading] = useState(false)
   
+  // Session management
+  const [sessionId, setSessionId] = useState<string | null>(null)
+  const [sessions, setSessions] = useState<Session[]>([])
+  const [showSessions, setShowSessions] = useState(true)
+  
   const [settings, setSettings] = useState<PlaygroundSettings>({
     model: 'gpt-4',
     temperature: 0.7,
@@ -168,6 +187,13 @@ export default function Playground() {
     loadModels()
     loadTestUsers()
   }, [])
+
+  // Load sessions when user changes
+  useEffect(() => {
+    if (selectedTestUser) {
+      loadUserSessions(selectedTestUser.id)
+    }
+  }, [selectedTestUser])
 
   const loadAgents = async () => {
     try {
@@ -316,13 +342,101 @@ export default function Playground() {
     localStorage.setItem('playground_users', JSON.stringify(usersObj))
   }
 
+  // Session management functions
+  const loadUserSessions = async (userId: string) => {
+    try {
+      // Load Zep sessions
+      const response = await fetch(`${API_URL}/api/playground-zep/sessions?user_id=${userId}`)
+      if (response.ok) {
+        const zepSessions = await response.json()
+        
+        // Convert to our Session format
+        const formattedSessions: Session[] = zepSessions.map((s: any) => ({
+          id: s.session_id || s.id,
+          user_id: userId,
+          title: s.title || `Session ${new Date(s.created_at).toLocaleDateString()}`,
+          created_at: new Date(s.created_at).getTime(),
+          last_message_at: s.last_message_at ? new Date(s.last_message_at).getTime() : undefined,
+          message_count: s.message_count || 0,
+          available_modes: {
+            context: true,  // Always available (localStorage)
+            mem0: false,    // Not implemented yet
+            zep: true       // Available from Zep
+          }
+        }))
+        
+        setSessions(formattedSessions)
+      }
+    } catch (error) {
+      console.error('Failed to load sessions:', error)
+    }
+  }
+
+  const createNewSession = () => {
+    const timestamp = Date.now()
+    const random = Math.random().toString(36).substr(2, 5)
+    const newSessionId = `session_${timestamp}_${random}`
+    
+    setSessionId(newSessionId)
+    setMessages([])
+    setMem0Messages([])
+    setZepMessages([])
+    
+    // Add to sessions list
+    const newSession: Session = {
+      id: newSessionId,
+      user_id: selectedTestUser?.id || '',
+      title: 'New Chat',
+      created_at: timestamp,
+      message_count: 0,
+      available_modes: {
+        context: true,
+        mem0: false,
+        zep: true
+      }
+    }
+    
+    setSessions(prev => [newSession, ...prev])
+  }
+
+  const selectSession = async (session: Session) => {
+    setSessionId(session.id)
+    
+    // Load messages from Zep if available
+    if (session.available_modes.zep) {
+      try {
+        const response = await fetch(`${API_URL}/api/playground-zep/sessions/${session.id}/messages`)
+        if (response.ok) {
+          const data = await response.json()
+          const messages = data.messages || []
+          
+          // Convert to our Message format
+          const formattedMessages: Message[] = messages.map((m: any) => ({
+            role: m.role === 'human' ? 'user' : m.role,
+            content: m.content
+          }))
+          
+          setMessages(formattedMessages)
+          setZepMessages(formattedMessages)
+        }
+      } catch (error) {
+        console.error('Failed to load session messages:', error)
+      }
+    }
+  }
+
   const handleSend = async () => {
     if (!input.trim() || !selectedAgent || loading) return
     
-    // Check if we need test user for Mem0
-    if (splitView && !selectedTestUser) {
-      alert('Please select or create a test user for Mem0 comparison')
+    // Check if we need test user for Mem0 or Zep
+    if ((splitView || tripleView) && !selectedTestUser) {
+      alert('Please select or create a test user for Mem0/Zep comparison')
       return
+    }
+    
+    // Create session if needed (for Zep)
+    if (tripleView && !sessionId && selectedTestUser) {
+      createNewSession()
     }
 
     const userMessage: Message = { role: 'user', content: input }
@@ -553,14 +667,20 @@ export default function Playground() {
   }
 
   const startZepStream = async (message: string) => {
-    if (!selectedAgent || !selectedTestUser) return
+    if (!selectedAgent || !selectedTestUser || !sessionId) return
+    
+    // Create new session if needed
+    if (!sessionId) {
+      createNewSession()
+    }
     
     try {
       const params = new URLSearchParams({
+        session_id: sessionId,  // Now using proper session_id
         agent_slug: selectedAgent.slug,
         system_prompt: systemPrompt,
         message: message,
-        user_id: selectedTestUser.id,  // Zep używa tego jako session_id
+        user_id: selectedTestUser.id,
         model: settings.model,
         temperature: settings.temperature.toString()
       })
@@ -816,6 +936,65 @@ export default function Playground() {
                 className="w-full h-64 px-3 py-2 border rounded-lg font-mono text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
+
+            {/* Session Management - only show when user selected */}
+            {selectedTestUser && (
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="flex items-center text-sm font-medium text-gray-700">
+                    Sessions
+                    <HelpIcon tooltip="Each session is a separate conversation. Click to load previous chats." />
+                  </label>
+                  <button
+                    onClick={createNewSession}
+                    className="text-sm px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                  >
+                    New Chat
+                  </button>
+                </div>
+                
+                <div className="space-y-1 max-h-48 overflow-y-auto border rounded-lg p-2">
+                  {sessions.length === 0 ? (
+                    <div className="text-sm text-gray-500 text-center py-4">
+                      No sessions yet. Click "New Chat" to start.
+                    </div>
+                  ) : (
+                    sessions.map(session => (
+                      <div
+                        key={session.id}
+                        onClick={() => selectSession(session)}
+                        className={`p-2 rounded cursor-pointer transition-colors ${
+                          sessionId === session.id ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium truncate">
+                            {session.title}
+                          </span>
+                          <div className="flex gap-1">
+                            {session.available_modes.context && (
+                              <span title="Available in Context mode" className="text-green-600">📝</span>
+                            )}
+                            {session.available_modes.mem0 && (
+                              <span title="Available in Mem0 mode" className="text-green-600">🧠</span>
+                            )}
+                            {!session.available_modes.mem0 && (
+                              <span title="Mem0 not implemented" className="text-gray-400">🧠</span>
+                            )}
+                            {session.available_modes.zep && (
+                              <span title="Available in Zep mode" className="text-green-600">🗂️</span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {new Date(session.created_at).toLocaleDateString()} • {session.message_count} messages
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Model Selection */}
             <div>
