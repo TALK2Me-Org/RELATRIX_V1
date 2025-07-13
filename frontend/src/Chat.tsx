@@ -98,7 +98,7 @@ export default function Chat({ user, onLogout }: Props) {
         (newAgent) => {
           if (newAgent && newAgent !== 'none') {
             setCurrentAgent(newAgent)
-            const notification = `Switching to ${AGENTS.find(a => a.slug === newAgent)?.name}`
+            const notification = `Switching to ${agents.find((a: Agent) => a.slug === newAgent)?.name}`
             setMessages(prev => {
               const updated = [...prev]
               updated[updated.length - 1].content += `\n\n*${notification}*`
