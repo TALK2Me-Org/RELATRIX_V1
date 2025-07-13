@@ -588,7 +588,7 @@ export default function Playground() {
           const updatedUser = {
             ...selectedTestUser,
             history: [...selectedTestUser.history, 
-              { role: 'user', content: message },
+              { role: 'user' as 'user', content: message },
               assistantMessage
             ],
             last_used: Date.now()
