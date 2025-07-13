@@ -62,7 +62,7 @@ async def generate_mem0_stream(
             if chunk.choices[0].delta.content:
                 content = chunk.choices[0].delta.content
                 full_response += content
-                yield f"data: {json.dumps({'content': content})}\n\n"
+                yield f"data: {json.dumps({'chunk': content})}\n\n"
         
         # 5. Save to memory (fire and forget)
         try:
@@ -73,7 +73,7 @@ async def generate_mem0_stream(
             logger.error(f"[MEM0] Failed to save memory: {e}")
         
         # Done
-        yield f"data: {json.dumps({'done': True})}\n\n"
+        yield f"data: [DONE]\n\n"
         
     except Exception as e:
         logger.error(f"[MEM0] Stream error: {e}")

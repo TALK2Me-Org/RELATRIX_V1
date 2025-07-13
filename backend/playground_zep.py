@@ -109,7 +109,7 @@ async def generate_zep_stream(
             if chunk.choices[0].delta.content:
                 content = chunk.choices[0].delta.content
                 full_response += content
-                yield f"data: {json.dumps({'content': content, 'memory_count': memory_count})}\n\n"
+                yield f"data: {json.dumps({'chunk': content, 'memory_count': memory_count})}\n\n"
         
         # 6. Save to Zep
         try:
@@ -136,7 +136,7 @@ async def generate_zep_stream(
             logger.error(f"[ZEP] Failed to save: {e}")
         
         # Done
-        yield f"data: {json.dumps({'done': True, 'session_id': session_id})}\n\n"
+        yield f"data: [DONE]\n\n"
         
     except Exception as e:
         logger.error(f"[ZEP] Stream error: {e}")
