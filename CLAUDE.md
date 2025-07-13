@@ -11,6 +11,13 @@ This file contains important information for Claude to remember across sessions.
 
 ### 📋 POZOSTAŁO DO ZROBIENIA:
 
+### 🔥 0. ZEP INTEGRATION (PRIORYTET!) - [2025-07-13 20:30]
+- **WAŻNE**: Integracja z Zep Memory API w Playground
+- **Plik z instrukcjami**: ZEP_INTEGRATION.md (szczegółowy guide)
+- **Co to da**: Trzecie okienko do porównania Mem0 vs Zep
+- **Czas**: 1-2 godziny
+- **Railway**: Nati musi dodać ZEP_API_KEY
+
 ### 1. System logów w Admin Panel
 - Viewer błędów Mem0 (z fire-and-forget)
 - Statystyki performance
