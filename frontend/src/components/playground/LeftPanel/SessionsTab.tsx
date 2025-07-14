@@ -6,6 +6,7 @@ interface SessionsTabProps {
   sessions: Session[]
   testUsers: TestUser[]
   selectedUser: TestUser | null
+  currentSessionId?: string | null
   onUserSelect: (user: TestUser) => void
   onUserCreate: () => void
   onSessionSelect: (session: Session) => void
@@ -16,6 +17,7 @@ export const SessionsTab: React.FC<SessionsTabProps> = ({
   sessions,
   testUsers,
   selectedUser,
+  currentSessionId,
   onUserSelect,
   onUserCreate,
   onSessionSelect,
@@ -99,7 +101,12 @@ export const SessionsTab: React.FC<SessionsTabProps> = ({
             sessions.map(session => (
               <div
                 key={session.id}
-                className="p-2 border rounded-lg hover:bg-gray-50 transition-colors"
+                className={`p-2 border rounded-lg transition-colors cursor-pointer ${
+                  currentSessionId === session.id 
+                    ? 'bg-blue-50 border-blue-300' 
+                    : 'hover:bg-gray-50 border-gray-200'
+                }`}
+                onClick={() => onSessionSelect(session)}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">

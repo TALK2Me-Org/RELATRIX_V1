@@ -16,7 +16,6 @@ export function usePlaygroundSSE({ mode, sessionId, userId }: UsePlaygroundSSEPr
   const [tokens, setTokens] = useState<TokenUsage>({ input: 0, output: 0, total: 0, lastInput: 0, lastOutput: 0 })
   const [detectedAgent, setDetectedAgent] = useState<string | null>(null)
   const eventSourceRef = useRef<EventSource | null>(null)
-  const previousTotalRef = useRef({ input: 0, output: 0 })
 
   const getEndpoint = useCallback(() => {
     switch (mode) {
@@ -122,20 +121,15 @@ export function usePlaygroundSSE({ mode, sessionId, userId }: UsePlaygroundSSEPr
             setDetectedAgent(data.agent_switch)
           }
 
-          // Update tokens when received
+          // Update tokens when received (backend sends tokens for current message only)
           if (data.input_tokens !== undefined && data.output_tokens !== undefined) {
-            setTokens({
-              input: data.input_tokens,
-              output: data.output_tokens,
-              total: data.total_tokens,
-              lastInput: data.input_tokens - previousTotalRef.current.input,
-              lastOutput: data.output_tokens - previousTotalRef.current.output
-            })
-            // Update previous totals for next run
-            previousTotalRef.current = {
-              input: data.input_tokens,
-              output: data.output_tokens
-            }
+            setTokens(prev => ({
+              input: prev.input + data.input_tokens,
+              output: prev.output + data.output_tokens,
+              total: prev.total + data.total_tokens,
+              lastInput: data.input_tokens,
+              lastOutput: data.output_tokens
+            }))
           }
         } catch (e) {
           console.error(`[${mode}] Parse error:`, e)
@@ -165,7 +159,6 @@ export function usePlaygroundSSE({ mode, sessionId, userId }: UsePlaygroundSSEPr
   const clearMessages = useCallback(() => {
     setMessages([])
     setTokens({ input: 0, output: 0, total: 0, lastInput: 0, lastOutput: 0 })
-    previousTotalRef.current = { input: 0, output: 0 }
   }, [])
 
   return {

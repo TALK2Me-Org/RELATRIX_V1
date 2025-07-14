@@ -188,13 +188,20 @@ export default function Playground() {
   return (
     <div className="flex h-screen bg-gray-50">
       <AdminSidebar activeItem="playground" onItemClick={(id) => {
-        // Handle navigation properly for playground context
-        if (id === 'dashboard' || id === 'chat') {
-          navigate('/')  // Go back to main app
-        } else if (id === 'playground') {
-          // Already in playground, do nothing
-        } else {
-          navigate(`/${id}`)  // Admin, settings etc.
+        // Custom navigation for playground
+        switch(id) {
+          case 'dashboard':
+            navigate('/')  // Main app dashboard
+            break
+          case 'agents':
+            navigate('/admin')  // Admin panel for agents
+            break
+          case 'settings':
+            navigate('/admin')  // Admin panel for settings
+            break
+          default:
+            // Do nothing for unknown items
+            break
         }
       }} />
       
@@ -218,6 +225,7 @@ export default function Playground() {
           sessions={sessions}
           testUsers={testUsers}
           selectedUser={selectedUser}
+          currentSessionId={sessionId}
           onUserSelect={setSelectedUser}
           onUserCreate={createTestUser}
           onSessionSelect={(session) => {
@@ -234,7 +242,7 @@ export default function Playground() {
           {/* Chat Windows */}
           <div className="flex-1 grid grid-cols-3 gap-4 p-4 min-h-0 overflow-hidden">
             <ChatWindow
-              title="No Memory"
+              title="FullContext"
               mode="none"
               agent={selectedAgent}
               systemPrompt={systemPrompt}

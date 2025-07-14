@@ -95,18 +95,19 @@ async def generate_zep_stream(
                 logger.info(f"[ZEP] Messages count: {len(memories.messages) if memories.messages else 0}")
             
             # Build clean messages structure
-            messages = [
-                {"role": "system", "content": system_prompt}
-            ]
+            # Combine system prompt with context if available
+            system_content = system_prompt
+            memory_count = 0
             
             # Add user context/facts if available (NOT the message history!)
             if memories and memories.context:
-                messages.append({
-                    "role": "system", 
-                    "content": f"User context and facts:\n{memories.context}"
-                })
+                system_content += f"\n\nUser context and facts:\n{memories.context}"
                 memory_count = len(memories.facts) if hasattr(memories, 'facts') and memories.facts else 0
                 logger.info(f"[ZEP] Found context with {memory_count} facts")
+            
+            messages = [
+                {"role": "system", "content": system_content}
+            ]
             
             # Add current message
             messages.append({"role": "user", "content": message})
@@ -218,7 +219,21 @@ async def get_user_sessions(user_id: str = Query(...)):
     
     try:
         sessions = await zep_client.user.get_sessions(user_id=user_id)
-        return sessions
+        # Zep doesn't return message count directly, so we need to enhance the response
+        enhanced_sessions = []
+        for session in sessions:
+            session_dict = session.dict() if hasattr(session, 'dict') else session
+            # Try to get message count for each session
+            try:
+                messages = await zep_client.memory.get_session_messages(session_id=session_dict.get('session_id', session_dict.get('id')))
+                message_count = len(messages.messages) if hasattr(messages, 'messages') else 0
+            except:
+                message_count = 0
+            
+            session_dict['message_count'] = message_count
+            enhanced_sessions.append(session_dict)
+        
+        return enhanced_sessions
     except Exception as e:
         logger.error(f"[ZEP] Failed to get sessions: {e}")
         return {"error": str(e)}

@@ -21,7 +21,7 @@ export const Header: React.FC<HeaderProps> = ({ title, tokens, onClear, memoryBa
       </div>
       
       <div className="flex items-center gap-3">
-        <span className="text-xs text-gray-500">
+        <span className="text-[10px] text-gray-500">
           Total: {tokens.input}/{tokens.output} • Last: {tokens.lastInput}/{tokens.lastOutput}
         </span>
         
