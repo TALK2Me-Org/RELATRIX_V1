@@ -172,10 +172,10 @@ export default function Playground() {
   // Session management
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [sessions, setSessions] = useState<Session[]>([])
-  const [activeTab, setActiveTab] = useState<'settings' | 'sessions'>('settings')
+  const [leftPanelTab, setLeftPanelTab] = useState<'settings' | 'sessions'>('settings')
   
   // Token tracking
-  const [tokenUsage, setTokenUsage] = useState({
+  const [tokenUsage] = useState({
     noMemory: { totalIn: 0, totalOut: 0, lastIn: 0, lastOut: 0 },
     mem0: { totalIn: 0, totalOut: 0, lastIn: 0, lastOut: 0 },
     zep: { totalIn: 0, totalOut: 0, lastIn: 0, lastOut: 0 }
@@ -896,9 +896,9 @@ export default function Playground() {
           {!leftPanelCollapsed && (
             <div className="flex border-b">
               <button
-                onClick={() => setActiveTab('settings')}
+                onClick={() => setLeftPanelTab('settings')}
                 className={`flex-1 py-2 px-4 text-sm font-medium transition-colors ${
-                  activeTab === 'settings'
+                  leftPanelTab === 'settings'
                     ? 'bg-white border-b-2 border-blue-500 text-blue-600'
                     : 'bg-gray-50 text-gray-600 hover:text-gray-800'
                 }`}
@@ -906,9 +906,9 @@ export default function Playground() {
                 Settings
               </button>
               <button
-                onClick={() => setActiveTab('sessions')}
+                onClick={() => setLeftPanelTab('sessions')}
                 className={`flex-1 py-2 px-4 text-sm font-medium transition-colors ${
-                  activeTab === 'sessions'
+                  leftPanelTab === 'sessions'
                     ? 'bg-white border-b-2 border-blue-500 text-blue-600'
                     : 'bg-gray-50 text-gray-600 hover:text-gray-800'
                 }`}
@@ -920,7 +920,7 @@ export default function Playground() {
           
           <div className={`p-4 space-y-4 ${leftPanelCollapsed ? 'hidden' : ''}`}>
             {/* Settings Tab */}
-            {activeTab === 'settings' && (
+            {leftPanelTab === 'settings' && (
               <>
                 {/* Agent Selection */}
             <div>
@@ -1065,7 +1065,7 @@ export default function Playground() {
             )}
             
             {/* Sessions Tab */}
-            {activeTab === 'sessions' && (
+            {leftPanelTab === 'sessions' && (
               <>
                 {selectedTestUser ? (
                   <div>
