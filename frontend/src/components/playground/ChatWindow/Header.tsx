@@ -1,6 +1,5 @@
 import React from 'react'
 import { TokenUsage } from '../../../types/playground.types'
-import { HelpIcon } from '../../Tooltip'
 
 interface HeaderProps {
   title: string

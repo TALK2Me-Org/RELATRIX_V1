@@ -167,7 +167,7 @@ export default function Playground() {
   
   return (
     <div className="flex h-screen bg-gray-50">
-      <AdminSidebar currentPage="playground" />
+      <AdminSidebar activeItem="playground" onItemClick={(id) => navigate(`/${id}`)} />
       
       <div className="flex-1 flex">
         {/* Left Panel */}
