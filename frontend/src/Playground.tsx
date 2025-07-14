@@ -172,6 +172,14 @@ export default function Playground() {
   // Session management
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [sessions, setSessions] = useState<Session[]>([])
+  const [activeTab, setActiveTab] = useState<'settings' | 'sessions'>('settings')
+  
+  // Token tracking
+  const [tokenUsage, setTokenUsage] = useState({
+    noMemory: { totalIn: 0, totalOut: 0, lastIn: 0, lastOut: 0 },
+    mem0: { totalIn: 0, totalOut: 0, lastIn: 0, lastOut: 0 },
+    zep: { totalIn: 0, totalOut: 0, lastIn: 0, lastOut: 0 }
+  })
   
   const [settings, setSettings] = useState<PlaygroundSettings>({
     model: 'gpt-4',
@@ -884,8 +892,37 @@ export default function Playground() {
             </button>
           </div>
           
+          {/* Tabs */}
+          {!leftPanelCollapsed && (
+            <div className="flex border-b">
+              <button
+                onClick={() => setActiveTab('settings')}
+                className={`flex-1 py-2 px-4 text-sm font-medium transition-colors ${
+                  activeTab === 'settings'
+                    ? 'bg-white border-b-2 border-blue-500 text-blue-600'
+                    : 'bg-gray-50 text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                Settings
+              </button>
+              <button
+                onClick={() => setActiveTab('sessions')}
+                className={`flex-1 py-2 px-4 text-sm font-medium transition-colors ${
+                  activeTab === 'sessions'
+                    ? 'bg-white border-b-2 border-blue-500 text-blue-600'
+                    : 'bg-gray-50 text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                Sessions
+              </button>
+            </div>
+          )}
+          
           <div className={`p-4 space-y-4 ${leftPanelCollapsed ? 'hidden' : ''}`}>
-            {/* Agent Selection */}
+            {/* Settings Tab */}
+            {activeTab === 'settings' && (
+              <>
+                {/* Agent Selection */}
             <div>
               <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
                 Select Agent
@@ -936,64 +973,6 @@ export default function Playground() {
               />
             </div>
 
-            {/* Session Management - only show when user selected */}
-            {selectedTestUser && (
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="flex items-center text-sm font-medium text-gray-700">
-                    Sessions
-                    <HelpIcon tooltip="Each session is a separate conversation. Click to load previous chats." />
-                  </label>
-                  <button
-                    onClick={createNewSession}
-                    className="text-sm px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-                  >
-                    New Chat
-                  </button>
-                </div>
-                
-                <div className="space-y-1 max-h-48 overflow-y-auto border rounded-lg p-2">
-                  {sessions.length === 0 ? (
-                    <div className="text-sm text-gray-500 text-center py-4">
-                      No sessions yet. Click "New Chat" to start.
-                    </div>
-                  ) : (
-                    sessions.map(session => (
-                      <div
-                        key={session.id}
-                        onClick={() => selectSession(session)}
-                        className={`p-2 rounded cursor-pointer transition-colors ${
-                          sessionId === session.id ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium truncate">
-                            {session.title}
-                          </span>
-                          <div className="flex gap-1">
-                            {session.available_modes.context && (
-                              <span title="Available in Context mode" className="text-green-600">📝</span>
-                            )}
-                            {session.available_modes.mem0 && (
-                              <span title="Available in Mem0 mode" className="text-green-600">🧠</span>
-                            )}
-                            {!session.available_modes.mem0 && (
-                              <span title="Mem0 not implemented" className="text-gray-400">🧠</span>
-                            )}
-                            {session.available_modes.zep && (
-                              <span title="Available in Zep mode" className="text-green-600">🗂️</span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {new Date(session.created_at).toLocaleDateString()} • {session.message_count} messages
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
 
             {/* Model Selection */}
             <div>
@@ -1082,6 +1061,76 @@ export default function Playground() {
                 />
               </label>
             </div>
+              </>
+            )}
+            
+            {/* Sessions Tab */}
+            {activeTab === 'sessions' && (
+              <>
+                {selectedTestUser ? (
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-sm font-medium text-gray-700">
+                        User: {selectedTestUser.name}
+                      </label>
+                      <button
+                        onClick={createNewSession}
+                        className="text-sm px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                      >
+                        New Chat
+                      </button>
+                    </div>
+                    
+                    <div className="space-y-1 max-h-[calc(100vh-250px)] overflow-y-auto">
+                      {sessions.length === 0 ? (
+                        <div className="text-sm text-gray-500 text-center py-8">
+                          No sessions yet.<br />Click "New Chat" to start.
+                        </div>
+                      ) : (
+                        sessions.map(session => (
+                          <div
+                            key={session.id}
+                            onClick={() => selectSession(session)}
+                            className={`p-3 rounded cursor-pointer transition-colors border ${
+                              sessionId === session.id 
+                                ? 'bg-blue-50 border-blue-300' 
+                                : 'hover:bg-gray-50 border-gray-200'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium truncate">
+                                {session.title}
+                              </span>
+                              <div className="flex gap-1">
+                                {session.available_modes.context && (
+                                  <span title="Available in Context mode" className="text-green-600">📝</span>
+                                )}
+                                {session.available_modes.mem0 && (
+                                  <span title="Available in Mem0 mode" className="text-green-600">🧠</span>
+                                )}
+                                {!session.available_modes.mem0 && (
+                                  <span title="Mem0 not implemented" className="text-gray-400">🧠</span>
+                                )}
+                                {session.available_modes.zep && (
+                                  <span title="Available in Zep mode" className="text-green-600">🗂️</span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              {new Date(session.created_at).toLocaleDateString()} • {session.message_count} messages
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-sm text-gray-500 text-center py-8">
+                    Please select a test user first.
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
 
@@ -1094,7 +1143,12 @@ export default function Playground() {
                 {/* Left - No Memory */}
                 <div className="flex-1 flex flex-col min-h-0">
                   <div className="bg-white border-b px-4 py-3 flex items-center justify-between flex-shrink-0">
-                    <h2 className="font-medium">No Memory</h2>
+                    <div className="flex items-center gap-2">
+                      <h2 className="font-medium">No Memory</h2>
+                    </div>
+                    <span className="text-xs text-gray-500">
+                      {tokenUsage.noMemory.totalIn}/{tokenUsage.noMemory.totalOut} • Last: {tokenUsage.noMemory.lastIn}/{tokenUsage.noMemory.lastOut}
+                    </span>
                   </div>
                   <div className="flex-1 overflow-hidden flex flex-col">
                     <ChatMessages
@@ -1113,6 +1167,9 @@ export default function Playground() {
                       <h2 className="font-medium">With Mem0</h2>
                       <HelpIcon tooltip="Chat używający pamięci Mem0" />
                     </div>
+                    <span className="text-xs text-gray-500">
+                      {tokenUsage.mem0.totalIn}/{tokenUsage.mem0.totalOut} • Last: {tokenUsage.mem0.lastIn}/{tokenUsage.mem0.lastOut}
+                    </span>
                   </div>
                   <div className="flex-1 overflow-hidden flex flex-col">
                     <ChatMessages
@@ -1131,6 +1188,9 @@ export default function Playground() {
                       <h2 className="font-medium">With Zep</h2>
                       <HelpIcon tooltip="Chat używający pamięci Zep" />
                     </div>
+                    <span className="text-xs text-gray-500">
+                      {tokenUsage.zep.totalIn}/{tokenUsage.zep.totalOut} • Last: {tokenUsage.zep.lastIn}/{tokenUsage.zep.lastOut}
+                    </span>
                   </div>
                   <div className="flex-1 overflow-hidden flex flex-col">
                     <ChatMessages
@@ -1152,6 +1212,9 @@ export default function Playground() {
                       <h2 className="font-medium">With Context</h2>
                       <HelpIcon tooltip="Chat z pełną historią konwersacji" />
                     </div>
+                    <span className="text-xs text-gray-500">
+                      {tokenUsage.noMemory.totalIn}/{tokenUsage.noMemory.totalOut} • Last: {tokenUsage.noMemory.lastIn}/{tokenUsage.noMemory.lastOut}
+                    </span>
                   </div>
                   <ChatMessages 
                     messages={messages}
@@ -1168,6 +1231,9 @@ export default function Playground() {
                       <h2 className="font-medium">With Mem0</h2>
                       <HelpIcon tooltip="Chat używający pamięci Mem0" />
                     </div>
+                    <span className="text-xs text-gray-500">
+                      {tokenUsage.mem0.totalIn}/{tokenUsage.mem0.totalOut} • Last: {tokenUsage.mem0.lastIn}/{tokenUsage.mem0.lastOut}
+                    </span>
                   </div>
                   <ChatMessages 
                     messages={mem0Messages}
