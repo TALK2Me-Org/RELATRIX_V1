@@ -83,7 +83,6 @@ export function usePlaygroundSSE({ mode, sessionId, userId }: UsePlaygroundSSEPr
 
       let fullResponse = ''
       let detectedJson: string | null = null
-      let detectedAgent: string | null = null
 
       eventSource.onmessage = (event) => {
         if (event.data === '[DONE]') {
@@ -120,7 +119,6 @@ export function usePlaygroundSSE({ mode, sessionId, userId }: UsePlaygroundSSEPr
           
           // Handle agent switch detection
           if (data.agent_switch) {
-            detectedAgent = data.agent_switch
             setDetectedAgent(data.agent_switch)
           }
 
