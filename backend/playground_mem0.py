@@ -8,6 +8,7 @@ from openai import AsyncOpenAI
 import json
 import logging
 from typing import AsyncGenerator
+import tiktoken
 
 from config import settings
 from memory_service import search_memories, add_memory
@@ -19,6 +20,12 @@ mem0_router = APIRouter()
 
 # OpenAI client
 openai = AsyncOpenAI(api_key=settings.openai_api_key)
+
+# Token encoding cache
+try:
+    encoding = tiktoken.encoding_for_model("gpt-4")
+except:
+    encoding = tiktoken.get_encoding("cl100k_base")  # Fallback
 
 
 async def generate_mem0_stream(
@@ -49,6 +56,9 @@ async def generate_mem0_stream(
             {"role": "user", "content": message}
         ]
         
+        # Count input tokens
+        input_tokens = sum(len(encoding.encode(str(msg))) for msg in messages)
+        
         # 4. Stream from OpenAI
         stream = await openai.chat.completions.create(
             model=model,
@@ -64,6 +74,9 @@ async def generate_mem0_stream(
                 full_response += content
                 yield f"data: {json.dumps({'chunk': content})}\n\n"
         
+        # Count output tokens
+        output_tokens = len(encoding.encode(full_response))
+        
         # 5. Save to memory (fire and forget)
         try:
             messages.append({"role": "assistant", "content": full_response})
@@ -71,6 +84,13 @@ async def generate_mem0_stream(
             logger.info(f"[MEM0] Memory saved for user: {user_id}")
         except Exception as e:
             logger.error(f"[MEM0] Failed to save memory: {e}")
+        
+        # Send token counts
+        yield f"data: {json.dumps({
+            'input_tokens': input_tokens,
+            'output_tokens': output_tokens,
+            'total_tokens': input_tokens + output_tokens
+        })}\n\n"
         
         # Done
         yield f"data: [DONE]\n\n"

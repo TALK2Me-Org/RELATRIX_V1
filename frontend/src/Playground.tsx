@@ -536,7 +536,6 @@ export default function Playground() {
             fullResponse += data.chunk
             rawResponse += data.chunk
             setStreamingContent(fullResponse)
-            msgTokens += data.tokens || 0
           }
 
           if (data.detected_json) {
@@ -544,8 +543,11 @@ export default function Playground() {
             agentSwitch = data.agent_switch
           }
 
-          if (data.total_tokens) {
-            msgTokens = data.total_tokens
+          // Token counts come in final message before [DONE]
+          if (data.input_tokens !== undefined && data.output_tokens !== undefined) {
+            setInputTokens(data.input_tokens)
+            setOutputTokens(data.output_tokens)
+            setTotalTokens(data.total_tokens)
           }
         } catch (e) {
           console.error('Parse error:', e)
@@ -647,6 +649,11 @@ export default function Playground() {
           if (data.detected_json) {
             detectedJson = data.detected_json
           }
+
+          // Token counts for Mem0
+          if (data.input_tokens !== undefined && data.output_tokens !== undefined) {
+            // Update Mem0 specific token counts if needed
+          }
         } catch (e) {
           console.error('Mem0 parse error:', e)
         }
@@ -744,6 +751,11 @@ export default function Playground() {
 
           if (data.detected_json) {
             detectedJson = data.detected_json
+          }
+
+          // Token counts for Zep
+          if (data.input_tokens !== undefined && data.output_tokens !== undefined) {
+            // Update Zep specific token counts if needed
           }
         } catch (e) {
           console.error('Zep parse error:', e)

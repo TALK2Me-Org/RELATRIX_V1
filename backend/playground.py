@@ -12,6 +12,7 @@ import logging
 import json
 import asyncio
 from openai import AsyncOpenAI
+import tiktoken
 
 from database import get_db
 from agent_parser import extract_agent_slug, remove_agent_json
@@ -23,6 +24,12 @@ playground_router = APIRouter()
 
 # OpenAI client
 openai = AsyncOpenAI(api_key=settings.openai_api_key)
+
+# Token encoding cache
+try:
+    encoding = tiktoken.encoding_for_model("gpt-4")
+except:
+    encoding = tiktoken.get_encoding("cl100k_base")  # Fallback
 
 
 class PlaygroundSettings(BaseModel):
@@ -215,8 +222,12 @@ async def playground_sse(
     """
     async def generate():
         try:
-            # Parse history
-            message_history = json.loads(history)
+            # Safe parse history
+            try:
+                message_history = json.loads(history) if history and history != "[]" else []
+            except:
+                message_history = []
+                logger.warning(f"[PLAYGROUND SSE] Failed to parse history: {history}")
             
             # Build messages with system prompt and history
             messages = [{"role": "system", "content": system_prompt}]
@@ -225,6 +236,9 @@ async def playground_sse(
             
             logger.info(f"[PLAYGROUND SSE] Agent: {agent_slug}, Model: {model}")
             logger.info(f"[PLAYGROUND SSE] Message count: {len(messages)}")
+            
+            # Count input tokens
+            input_tokens = sum(len(encoding.encode(str(msg))) for msg in messages)
             
             # Stream from OpenAI
             stream = await openai.chat.completions.create(
@@ -236,28 +250,29 @@ async def playground_sse(
             )
             
             full_response = ""
-            total_tokens = 0
             
             async for chunk in stream:
                 if chunk.choices[0].delta.content:
                     content = chunk.choices[0].delta.content
                     full_response += content
                     
-                    # Send chunk
-                    data = {
-                        "chunk": content,
-                        "tokens": len(content.split()) // 4  # Approximate
-                    }
+                    # Send chunk (without fake tokens)
+                    data = {"chunk": content}
                     yield f"data: {json.dumps(data)}\n\n"
+            
+            # Count output tokens
+            output_tokens = len(encoding.encode(full_response))
             
             # Detect JSON in full response
             detected_json = extract_agent_slug(full_response)
             
-            # Send final metadata
+            # Send final metadata with real tokens
             final_data = {
                 "detected_json": f'{{"agent": "{detected_json}"}}' if detected_json else None,
                 "agent_switch": detected_json,
-                "total_tokens": len(full_response.split()) // 4  # Approximate
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "total_tokens": input_tokens + output_tokens
             }
             yield f"data: {json.dumps(final_data)}\n\n"
             

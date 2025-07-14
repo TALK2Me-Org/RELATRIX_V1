@@ -10,6 +10,7 @@ import logging
 import time
 import uuid
 from typing import AsyncGenerator
+import tiktoken
 
 from config import settings
 
@@ -20,6 +21,12 @@ zep_router = APIRouter()
 
 # OpenAI client
 openai = AsyncOpenAI(api_key=settings.openai_api_key)
+
+# Token encoding cache
+try:
+    encoding = tiktoken.encoding_for_model("gpt-4")
+except:
+    encoding = tiktoken.get_encoding("cl100k_base")  # Fallback
 
 # Zep client
 zep_client = None
@@ -74,39 +81,39 @@ async def generate_zep_stream(
             )
             logger.info(f"[ZEP] Created new session: {session_id}")
         
-        # 3. Get user memory context
-        memory_context = ""
+        # 3. Get user memory context (facts only, Zep handles history!)
         memory_count = 0
         
         try:
-            # Get memory for this specific session (will be empty for new session)
-            # For user context across sessions, we'd need different approach
-            memories = await zep_client.memory.get(
-                session_id=session_id
-            )
+            memories = await zep_client.memory.get(session_id=session_id)
             
-            if memories:
-                # Add context (facts from user's entire history)
-                if memories.context:
-                    memory_context += f"\n\n{memories.context}"
-                    memory_count = len(memories.facts) if hasattr(memories, 'facts') and memories.facts else 0
-                    logger.info(f"[ZEP] Found context with {memory_count} facts")
-                
-                # Also add recent messages from this session (if any)
-                if memories.messages and len(memories.messages) > 0:
-                    memory_context += "\n\nRecent messages in this session:\n"
-                    for msg in memories.messages:  # All messages
-                        memory_context += f"{msg.role}: {msg.content}\n"
-                    logger.info(f"[ZEP] Added {len(memories.messages)} session messages")
-                
+            # Build clean messages structure
+            messages = [
+                {"role": "system", "content": system_prompt}
+            ]
+            
+            # Add user context/facts if available (NOT the message history!)
+            if memories and memories.context:
+                messages.append({
+                    "role": "system", 
+                    "content": f"User context and facts:\n{memories.context}"
+                })
+                memory_count = len(memories.facts) if hasattr(memories, 'facts') and memories.facts else 0
+                logger.info(f"[ZEP] Found context with {memory_count} facts")
+            
+            # Add current message
+            messages.append({"role": "user", "content": message})
+            
         except Exception as e:
             logger.debug(f"[ZEP] No memory yet: {e}")
+            # Fallback - simple messages without context
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": message}
+            ]
         
-        # 4. Build messages
-        messages = [
-            {"role": "system", "content": system_prompt + memory_context},
-            {"role": "user", "content": message}
-        ]
+        # Count input tokens
+        input_tokens = sum(len(encoding.encode(str(msg))) for msg in messages)
         
         # 5. Stream from OpenAI
         stream = await openai.chat.completions.create(
@@ -121,7 +128,10 @@ async def generate_zep_stream(
             if chunk.choices[0].delta.content:
                 content = chunk.choices[0].delta.content
                 full_response += content
-                yield f"data: {json.dumps({'chunk': content, 'memory_count': memory_count})}\n\n"
+                yield f"data: {json.dumps({'chunk': content})}\n\n"
+        
+        # Count output tokens
+        output_tokens = len(encoding.encode(full_response))
         
         # 6. Save to Zep
         try:
@@ -146,6 +156,14 @@ async def generate_zep_stream(
             
         except Exception as e:
             logger.error(f"[ZEP] Failed to save: {e}")
+        
+        # Send token counts
+        yield f"data: {json.dumps({
+            'input_tokens': input_tokens,
+            'output_tokens': output_tokens,
+            'total_tokens': input_tokens + output_tokens,
+            'memory_count': memory_count
+        })}\n\n"
         
         # Done
         yield f"data: [DONE]\n\n"
