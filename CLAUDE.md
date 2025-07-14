@@ -4,12 +4,21 @@ This file contains important information for Claude to remember across sessions.
 
 ## 🚨 DO ZROBIENIA - Następna sesja:
 
-### 🔴 PROBLEMY DO NAPRAWY (2025-01-14):
-1. **Token counting nie działa** - UI pokazuje 0/0, trzeba implementować aktualizację tokenów
-2. **System prompt w Zep** - przykleja się cała historia do system message (powinno być tylko w messages)
-3. **Gigantyczny prompt** - za dużo informacji dodawanych do promptu (context + messages)
-4. **No Memory - connection failed** - błąd połączenia w trybie bez pamięci
-5. **Mem0 nadal ma problemy** - dziwne formatowanie pamięci, duplikaty w prompcie
+### 🔴 PROBLEMY DO NAPRAWY (2025-01-14 - po refactorze):
+
+#### NOWE PROBLEMY PO REFACTORZE:
+1. **Chat.tsx jest PUSTY** - nawigacja nie działa, menu prowadzi do nieistniejących stron
+2. **Tokeny - zły format** - powinno być: "245/187 • Last: 45/32", jest: "In: 0 • Out: 0 • Total: 0"
+3. **Auto-switch agents nie działa** - w starym działało (linia 520), brak callbacka
+4. **Zep nie pobiera pamięci** - tworzy sesje ale nie retrieval kontekstu
+5. **Layout ucieka w dół** - brak min-h-0 overflow-hidden
+6. **Sesje nie działają** - loadUserSessions() zwraca mock, brak zapisu do localStorage
+
+#### SZCZEGÓŁY W PLIKU: PLAYGROUND_ISSUES.md
+
+#### STARE PROBLEMY (prawdopodobnie naprawione):
+1. ~~System prompt w Zep~~ - naprawione, używamy osobnych messages
+2. ~~Gigantyczny prompt~~ - naprawione, Zep nie duplikuje historii
 
 ### ✅ ZROBIONE (2025-07-13):
 1. **Tworzenie nowych agentów** - przycisk "Nowy Agent", modal z formularzem
