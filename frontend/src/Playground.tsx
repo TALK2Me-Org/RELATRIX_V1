@@ -149,6 +149,8 @@ export default function Playground() {
   const [tempPrompt, setTempPrompt] = useState('')
   const [models, setModels] = useState<Model[]>([])
   const [totalTokens, setTotalTokens] = useState(0)
+  const [inputTokens, setInputTokens] = useState(0)
+  const [outputTokens, setOutputTokens] = useState(0)
   const [streamingContent, setStreamingContent] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(() => {
@@ -1159,7 +1161,7 @@ export default function Playground() {
                       <h2 className="font-medium">No Memory</h2>
                     </div>
                     <span className="text-xs text-gray-500">
-                      {tokenUsage.noMemory.totalIn}/{tokenUsage.noMemory.totalOut} • Last: {tokenUsage.noMemory.lastIn}/{tokenUsage.noMemory.lastOut}
+                      Input: {inputTokens} • Output: {outputTokens} • Total: {totalTokens}
                     </span>
                   </div>
                   <div className="flex-1 overflow-hidden flex flex-col">
