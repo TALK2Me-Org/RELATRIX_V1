@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getAgents } from './api'
 import AdminSidebar from './components/AdminSidebar'
@@ -21,7 +21,7 @@ import {
   Message
 } from './types/playground.types'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+// API_URL is used in child components through hooks
 
 // Default models
 const DEFAULT_MODELS = [
@@ -102,7 +102,7 @@ export default function Playground() {
     }
   }
   
-  const loadUserSessions = async (userId: string) => {
+  const loadUserSessions = async (_userId: string) => {
     // In real app, would load from backend
     // For now, mock data
     setSessions([])
