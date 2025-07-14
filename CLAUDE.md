@@ -4,6 +4,13 @@ This file contains important information for Claude to remember across sessions.
 
 ## 🚨 DO ZROBIENIA - Następna sesja:
 
+### 🔴 PROBLEMY DO NAPRAWY (2025-01-14):
+1. **Token counting nie działa** - UI pokazuje 0/0, trzeba implementować aktualizację tokenów
+2. **System prompt w Zep** - przykleja się cała historia do system message (powinno być tylko w messages)
+3. **Gigantyczny prompt** - za dużo informacji dodawanych do promptu (context + messages)
+4. **No Memory - connection failed** - błąd połączenia w trybie bez pamięci
+5. **Mem0 nadal ma problemy** - dziwne formatowanie pamięci, duplikaty w prompcie
+
 ### ✅ ZROBIONE (2025-07-13):
 1. **Tworzenie nowych agentów** - przycisk "Nowy Agent", modal z formularzem
 2. **Usuwanie agentów** - przycisk "Usuń" przy każdym agencie
