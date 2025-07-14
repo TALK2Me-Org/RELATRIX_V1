@@ -21,7 +21,8 @@ import {
   Message
 } from './types/playground.types'
 
-// API_URL is used in child components through hooks
+// API configuration
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 // Default models
 const DEFAULT_MODELS = [
@@ -102,10 +103,29 @@ export default function Playground() {
     }
   }
   
-  const loadUserSessions = async (_userId: string) => {
-    // In real app, would load from backend
-    // For now, mock data
-    setSessions([])
+  const loadUserSessions = async (userId: string) => {
+    try {
+      const response = await fetch(`${API_URL}/api/playground-zep/sessions?user_id=${userId}`)
+      if (response.ok) {
+        const zepSessions = await response.json()
+        
+        // Convert to our Session format
+        const formattedSessions: Session[] = zepSessions.map((s: any) => ({
+          id: s.session_id || s.id,
+          user_id: userId,
+          title: s.title || `Session ${new Date(s.created_at).toLocaleDateString()}`,
+          created_at: new Date(s.created_at).getTime(),
+          last_message_at: s.last_message_at ? new Date(s.last_message_at).getTime() : undefined,
+          message_count: s.message_count || 0,
+          memory_type: 'zep' as const
+        }))
+        
+        setSessions(formattedSessions)
+      }
+    } catch (error) {
+      console.error('Failed to load Zep sessions:', error)
+      setSessions([])
+    }
   }
   
   const handleAgentChange = (slug: string) => {
@@ -167,7 +187,16 @@ export default function Playground() {
   
   return (
     <div className="flex h-screen bg-gray-50">
-      <AdminSidebar activeItem="playground" onItemClick={(id) => navigate(`/${id}`)} />
+      <AdminSidebar activeItem="playground" onItemClick={(id) => {
+        // Handle navigation properly for playground context
+        if (id === 'dashboard' || id === 'chat') {
+          navigate('/')  // Go back to main app
+        } else if (id === 'playground') {
+          // Already in playground, do nothing
+        } else {
+          navigate(`/${id}`)  // Admin, settings etc.
+        }
+      }} />
       
       <div className="flex-1 flex">
         {/* Left Panel */}
@@ -203,7 +232,7 @@ export default function Playground() {
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col">
           {/* Chat Windows */}
-          <div className="flex-1 grid grid-cols-3 gap-4 p-4">
+          <div className="flex-1 grid grid-cols-3 gap-4 p-4 min-h-0 overflow-hidden">
             <ChatWindow
               title="No Memory"
               mode="none"
@@ -212,6 +241,7 @@ export default function Playground() {
               settings={settings}
               ref={(ref) => { if (ref) contextChatRef.current = ref }}
               onSendMessage={(content) => handleChatMessage({ role: 'assistant', content })}
+              onAgentSwitch={handleAgentChange}
             />
             
             <ChatWindow
@@ -223,6 +253,7 @@ export default function Playground() {
               userId={selectedUser?.id}
               ref={(ref) => { if (ref) mem0ChatRef.current = ref }}
               onSendMessage={(content) => handleChatMessage({ role: 'assistant', content })}
+              onAgentSwitch={handleAgentChange}
             />
             
             <ChatWindow
@@ -235,6 +266,7 @@ export default function Playground() {
               userId={selectedUser?.id}
               ref={(ref) => { if (ref) zepChatRef.current = ref }}
               onSendMessage={(content) => handleChatMessage({ role: 'assistant', content })}
+              onAgentSwitch={handleAgentChange}
             />
           </div>
           

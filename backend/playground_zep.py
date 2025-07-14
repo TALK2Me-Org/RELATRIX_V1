@@ -87,6 +87,13 @@ async def generate_zep_stream(
         try:
             memories = await zep_client.memory.get(session_id=session_id)
             
+            # Debug logging for memory retrieval
+            logger.info(f"[ZEP] Raw memories object: {memories}")
+            logger.info(f"[ZEP] Has context: {bool(memories and memories.context)}")
+            logger.info(f"[ZEP] Context content: {memories.context if memories and memories.context else 'EMPTY'}")
+            if memories and hasattr(memories, 'messages'):
+                logger.info(f"[ZEP] Messages count: {len(memories.messages) if memories.messages else 0}")
+            
             # Build clean messages structure
             messages = [
                 {"role": "system", "content": system_prompt}

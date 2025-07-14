@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { Header } from './Header'
 import { MessageList } from './MessageList'
 import { usePlaygroundSSE } from '../../../hooks/playground/usePlaygroundSSE'
@@ -13,6 +13,7 @@ interface ChatWindowProps {
   sessionId?: string
   userId?: string
   onSendMessage?: (content: string) => void
+  onAgentSwitch?: (agentSlug: string) => void
 }
 
 export const ChatWindow = React.forwardRef<
@@ -26,13 +27,21 @@ export const ChatWindow = React.forwardRef<
   settings,
   sessionId,
   userId,
-  onSendMessage
+  onSendMessage,
+  onAgentSwitch
 }, ref) => {
-  const { messages, streaming, loading, tokens, sendMessage, clearMessages } = usePlaygroundSSE({
+  const { messages, streaming, loading, tokens, sendMessage, clearMessages, detectedAgent } = usePlaygroundSSE({
     mode,
     sessionId,
     userId
   })
+
+  // Handle auto-switch when agent is detected
+  useEffect(() => {
+    if (settings.auto_switch && detectedAgent && onAgentSwitch && detectedAgent !== agent?.slug) {
+      onAgentSwitch(detectedAgent)
+    }
+  }, [detectedAgent, settings.auto_switch, onAgentSwitch, agent?.slug])
 
   const handleSend = (content: string) => {
     if (!agent) return

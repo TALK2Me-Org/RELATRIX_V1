@@ -30,6 +30,8 @@ export interface TokenUsage {
   input: number
   output: number
   total: number
+  lastInput: number
+  lastOutput: number
 }
 
 export interface Session {
