@@ -80,7 +80,10 @@ async def generate_mem0_stream(
         # 5. Save to memory (fire and forget)
         try:
             messages.append({"role": "assistant", "content": full_response})
-            await add_memory(messages, user_id)
+            await add_memory([
+                {"role": "user", "content": message},
+                {"role": "assistant", "content": full_response}
+            ], user_id)
             logger.info(f"[MEM0] Memory saved for user: {user_id}")
         except Exception as e:
             logger.error(f"[MEM0] Failed to save memory: {e}")
