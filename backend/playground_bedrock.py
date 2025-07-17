@@ -47,8 +47,11 @@ async def generate_bedrock_stream(
         return
     
     try:
+        # Always use Claude 3.5 Sonnet for Bedrock (ignore frontend model)
+        actual_model = "anthropic.claude-3-5-sonnet-20240620-v1:0"
+        
         # Detect which API format to use based on model
-        use_messages_api = "claude-3" in model or "claude-4" in model or "sonnet" in model
+        use_messages_api = "claude-3" in actual_model or "claude-4" in actual_model or "sonnet" in actual_model
         
         if use_messages_api:
             # New Messages API format for Claude 3+
@@ -74,9 +77,9 @@ async def generate_bedrock_stream(
             })
         
         # Invoke the model with streaming
-        logger.info(f"[BEDROCK] Invoking model: {model}")
+        logger.info(f"[BEDROCK] Invoking model: {actual_model}")
         response = bedrock_runtime.invoke_model_with_response_stream(
-            modelId=model,
+            modelId=actual_model,
             contentType="application/json",
             accept="application/json",
             body=body
