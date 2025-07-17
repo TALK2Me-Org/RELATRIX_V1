@@ -9,6 +9,8 @@ import logging
 from typing import AsyncGenerator
 import boto3
 from botocore.exceptions import ClientError
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 
 from config import settings
 
@@ -16,6 +18,9 @@ logger = logging.getLogger(__name__)
 
 # Router
 bedrock_router = APIRouter()
+
+# Thread pool for blocking boto3 calls
+executor = ThreadPoolExecutor(max_workers=3)
 
 # Initialize Bedrock client (only if AWS credentials are provided)
 bedrock_runtime = None
@@ -76,9 +81,12 @@ async def generate_bedrock_stream(
                 "stop_sequences": ["\n\nHuman:"]
             })
         
-        # Invoke the model with streaming
+        # Invoke the model with streaming (async to not block)
         logger.info(f"[BEDROCK] Invoking model: {actual_model}")
-        response = bedrock_runtime.invoke_model_with_response_stream(
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(
+            executor,
+            bedrock_runtime.invoke_model_with_response_stream,
             modelId=actual_model,
             contentType="application/json",
             accept="application/json",
