@@ -84,14 +84,16 @@ async def generate_bedrock_stream(
         # Invoke the model with streaming (async to not block)
         logger.info(f"[BEDROCK] Invoking model: {actual_model}")
         loop = asyncio.get_event_loop()
-        response = await loop.run_in_executor(
-            executor,
-            bedrock_runtime.invoke_model_with_response_stream,
+        
+        # Create a lambda function that calls invoke_model with all parameters
+        invoke_func = lambda: bedrock_runtime.invoke_model_with_response_stream(
             modelId=actual_model,
             contentType="application/json",
             accept="application/json",
             body=body
         )
+        
+        response = await loop.run_in_executor(executor, invoke_func)
         
         # Stream the response
         full_response = ""
