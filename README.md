@@ -6,20 +6,21 @@ RELATRIX is an AI-powered relationship counseling platform that uses specialized
 
 - **7 Specialized AI Agents** for different relationship scenarios
 - **Intelligent Agent Switching** based on conversation context
-- **Memory-Optimized Conversations** using Mem0 + Redis
-- **Real-time Chat Interface** with WebSocket support
+- **Memory Solutions Testing** - Currently testing various memory solutions (in progress)
+- **Real-time Chat Interface** with SSE streaming support
 - **Admin Dashboard** for monitoring and management
 - **Cost Tracking** and usage analytics
 - **Supabase Authentication** for secure user management
+- **Enhanced Playground** for testing and memory experiments (4 windows: No Memory, Mem0, Zep, Bedrock - in progress)
 
 ## Architecture
 
 ### Core Components
 
-1. **MCP Server** - Model Context Protocol server managing agent interactions
+1. **Multi-Agent Orchestrator** - Intelligent routing between specialized agents
 2. **Specialized Agents** - 7 AI agents for different relationship scenarios
-3. **Memory Manager** - Intelligent context preservation using Mem0 + Redis
-4. **FastAPI Backend** - RESTful API with WebSocket support
+3. **Memory Systems** - Testing various memory solutions for optimal performance
+4. **FastAPI Backend** - RESTful API with SSE streaming
 5. **React Frontend** - Modern chat interface with admin panel
 
 ### Specialized Agents
@@ -89,7 +90,7 @@ npm start
 You'll need to set up these external services:
 
 1. **OpenAI API** - For AI agent capabilities
-2. **Mem0** - For intelligent memory management
+2. **Memory Systems** - Currently testing Mem0, Zep, AWS Bedrock, and other solutions
 3. **Supabase** - For authentication and user management
 4. **Railway** - For deployment and hosting
 
@@ -98,14 +99,19 @@ See the deployment documentation for detailed setup instructions.
 ## API Endpoints
 
 ### Chat API
-- `POST /chat/send` - Send message to AI agent
-- `GET /chat/history` - Get conversation history
-- `WebSocket /chat/ws` - Real-time chat connection
+- `POST /api/chat` - Send message to AI agent with SSE streaming
+- `GET /api/agents` - Get available agents
+- `GET /api/settings` - Get system settings
 
 ### Admin API
-- `GET /admin/users` - User management
-- `GET /admin/analytics` - Usage analytics
-- `GET /admin/settings` - System configuration
+- `GET /api/admin/users` - User management
+- `POST /api/admin/agents` - Agent management
+- `GET /api/admin/analytics` - Usage analytics
+
+### Playground API
+- `POST /api/playground/chat` - Test conversations with different memory modes
+- `GET /api/playground/memory` - Test memory retrieval
+- `POST /api/playground/bedrock` - Test AWS Bedrock integration (in progress)
 
 ## Deployment
 
@@ -113,10 +119,10 @@ This application is designed to be deployed on Railway. See `docs/deployment-rai
 
 ## Cost Optimization
 
-- **Memory Management** - Intelligent context compression
-- **Agent Switching** - Efficient context preservation
-- **Redis Caching** - Reduced API calls
-- **Usage Tracking** - Real-time cost monitoring
+- **Memory Solutions** - Testing various approaches for optimal performance
+- **Agent Orchestration** - Intelligent routing reduces unnecessary API calls
+- **SSE Streaming** - Efficient real-time communication
+- **Usage Tracking** - Real-time cost monitoring and analytics
 
 ## Security
 
@@ -145,17 +151,19 @@ For support and questions, please contact the development team.
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   React Frontend │    │   FastAPI       │    │   MCP Server    │
-│   - Chat UI      │◄──►│   - REST API    │◄──►│   - 7 Agents    │
-│   - Admin Panel  │    │   - WebSocket   │    │   - Memory Mgr  │
+│   React Frontend │    │   FastAPI       │    │  Multi-Agent    │
+│   - Chat UI      │◄──►│   - REST API    │◄──►│  Orchestrator   │
+│   - Admin Panel  │    │   - SSE Stream  │    │   - 7 Agents    │
+│   - Playground   │    │   - Auth        │    │   - Routing     │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
         │                        │                        │
         │                        ▼                        ▼
         │              ┌─────────────────┐    ┌─────────────────┐
-        │              │   Supabase      │    │   Mem0 + Redis  │
-        │              │   - Auth        │    │   - Memory      │
-        │              │   - User Data   │    │   - Context     │
-        │              └─────────────────┘    └─────────────────┘
+        │              │   Supabase      │    │  Memory Systems │
+        │              │   - Auth        │    │  - Mem0 (test)  │
+        │              │   - User Data   │    │  - Zep (test)   │
+        │              └─────────────────┘    │  - Bedrock (WIP)│
+        │                                      └─────────────────┘
         │
         ▼
 ┌─────────────────┐
