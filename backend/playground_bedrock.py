@@ -47,13 +47,31 @@ async def generate_bedrock_stream(
         return
     
     try:
-        # Prepare request body for Claude (using the correct format)
-        body = json.dumps({
-            "prompt": f"\n\nHuman: {system_prompt}\n\n{message}\n\nAssistant:",
-            "max_tokens_to_sample": 4000,
-            "temperature": temperature,
-            "stop_sequences": ["\n\nHuman:"]
-        })
+        # Detect which API format to use based on model
+        use_messages_api = "claude-3" in model or "claude-4" in model or "sonnet" in model
+        
+        if use_messages_api:
+            # New Messages API format for Claude 3+
+            body = json.dumps({
+                "anthropic_version": "bedrock-2023-05-31",
+                "max_tokens": 4000,
+                "temperature": temperature,
+                "system": system_prompt,
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": message
+                    }
+                ]
+            })
+        else:
+            # Old format for Claude Instant and v2
+            body = json.dumps({
+                "prompt": f"\n\nHuman: {system_prompt}\n\n{message}\n\nAssistant:",
+                "max_tokens_to_sample": 4000,
+                "temperature": temperature,
+                "stop_sequences": ["\n\nHuman:"]
+            })
         
         # Invoke the model with streaming
         logger.info(f"[BEDROCK] Invoking model: {model}")
@@ -75,33 +93,49 @@ async def generate_bedrock_stream(
                     try:
                         chunk_data = json.loads(chunk.get('bytes', b'{}').decode())
                         
-                        # Claude v1 format - simple completion field
-                        if 'completion' in chunk_data:
-                            text = chunk_data['completion']
-                            # Extract only the new part (Claude sends cumulative)
-                            new_text = text[len(full_response):]
-                            if new_text:
-                                full_response = text
-                                yield f"data: {json.dumps({'chunk': new_text})}\n\n"
-                        
-                        # Check for stop reason
-                        if chunk_data.get('stop_reason'):
-                            logger.info(f"[BEDROCK] Response completed for user: {user_id}")
+                        if use_messages_api:
+                            # New Messages API format
+                            if chunk_data.get('type') == 'content_block_delta':
+                                delta = chunk_data.get('delta', {})
+                                text = delta.get('text', '')
+                                if text:
+                                    full_response += text
+                                    yield f"data: {json.dumps({'chunk': text})}\n\n"
+                            elif chunk_data.get('type') == 'message_stop':
+                                logger.info(f"[BEDROCK] Response completed for user: {user_id}")
+                        else:
+                            # Old format - simple completion field
+                            if 'completion' in chunk_data:
+                                text = chunk_data['completion']
+                                # Extract only the new part (Claude sends cumulative)
+                                new_text = text[len(full_response):]
+                                if new_text:
+                                    full_response = text
+                                    yield f"data: {json.dumps({'chunk': new_text})}\n\n"
+                            
+                            # Check for stop reason
+                            if chunk_data.get('stop_reason'):
+                                logger.info(f"[BEDROCK] Response completed for user: {user_id}")
                             
                     except json.JSONDecodeError:
                         logger.warning(f"[BEDROCK] Failed to parse chunk: {chunk}")
         
         # Estimate tokens (rough approximation for Claude)
-        prompt_text = f"\n\nHuman: {system_prompt}\n\n{message}\n\nAssistant:"
+        if use_messages_api:
+            prompt_text = f"{system_prompt} {message}"
+        else:
+            prompt_text = f"\n\nHuman: {system_prompt}\n\n{message}\n\nAssistant:"
+        
         input_tokens = len(prompt_text.split()) * 1.3  # Rough estimate
         output_tokens = len(full_response.split()) * 1.3
         
         # Send token counts
-        yield f"data: {json.dumps({
+        token_data = {
             'input_tokens': int(input_tokens),
             'output_tokens': int(output_tokens),
             'total_tokens': int(input_tokens + output_tokens)
-        })}\n\n"
+        }
+        yield f"data: {json.dumps(token_data)}\n\n"
         
         # Done
         yield f"data: [DONE]\n\n"
