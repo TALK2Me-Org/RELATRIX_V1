@@ -23,6 +23,8 @@ export function usePlaygroundSSE({ mode, sessionId, userId }: UsePlaygroundSSEPr
         return `${API_URL}/api/playground-mem0/sse`
       case 'zep':
         return `${API_URL}/api/playground-zep/sse`
+      case 'bedrock':
+        return `${API_URL}/api/playground-bedrock/sse`
       default:
         return `${API_URL}/api/playground/sse`
     }
@@ -67,6 +69,8 @@ export function usePlaygroundSSE({ mode, sessionId, userId }: UsePlaygroundSSEPr
         params.append('user_id', userId)
       } else if (mode === 'zep' && sessionId && userId) {
         params.append('session_id', sessionId)
+        params.append('user_id', userId)
+      } else if (mode === 'bedrock' && userId) {
         params.append('user_id', userId)
       } else if (mode === 'none') {
         // Add history for context mode

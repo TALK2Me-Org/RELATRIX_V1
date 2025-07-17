@@ -18,6 +18,11 @@ class Settings(BaseSettings):
     # Zep
     zep_api_key: Optional[str] = os.getenv("ZEP_API_KEY", None)
     
+    # AWS Bedrock
+    aws_access_key_id: Optional[str] = os.getenv("AWS_ACCESS_KEY_ID", None)
+    aws_secret_access_key: Optional[str] = os.getenv("AWS_SECRET_ACCESS_KEY", None)
+    aws_default_region: str = os.getenv("AWS_DEFAULT_REGION", "eu-central-1")
+    
     # Supabase
     supabase_url: str = os.getenv("SUPABASE_URL", "")
     supabase_anon_key: str = os.getenv("SUPABASE_ANON_KEY", "")

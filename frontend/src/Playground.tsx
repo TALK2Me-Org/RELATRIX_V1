@@ -62,6 +62,7 @@ export default function Playground() {
   const contextChatRef = useRef<{ sendMessage: (content: string) => void }>()
   const mem0ChatRef = useRef<{ sendMessage: (content: string) => void }>()
   const zepChatRef = useRef<{ sendMessage: (content: string) => void }>()
+  const bedrockChatRef = useRef<{ sendMessage: (content: string) => void }>()
   
   // Track last assistant message for debug panel
   const [lastAssistantMessage, setLastAssistantMessage] = useState<Message | null>(null)
@@ -139,10 +140,11 @@ export default function Playground() {
   }
   
   const handleSendToAll = (content: string) => {
-    // Send to all 3 chat windows
+    // Send to all 4 chat windows
     contextChatRef.current?.sendMessage(content)
     mem0ChatRef.current?.sendMessage(content)
     zepChatRef.current?.sendMessage(content)
+    bedrockChatRef.current?.sendMessage(content)
   }
   
   const createTestUser = () => {
@@ -273,6 +275,18 @@ export default function Playground() {
               sessionId={sessionId || createNewSession()}
               userId={selectedUser?.id}
               ref={(ref) => { if (ref) zepChatRef.current = ref }}
+              onSendMessage={(content) => handleChatMessage({ role: 'assistant', content })}
+              onAgentSwitch={handleAgentChange}
+            />
+            
+            <ChatWindow
+              title="AWS Bedrock"
+              mode="bedrock"
+              agent={selectedAgent}
+              systemPrompt={systemPrompt}
+              settings={settings}
+              userId={selectedUser?.id}
+              ref={(ref) => { if (ref) bedrockChatRef.current = ref }}
               onSendMessage={(content) => handleChatMessage({ role: 'assistant', content })}
               onAgentSwitch={handleAgentChange}
             />

@@ -169,6 +169,16 @@ try:
 except Exception as e:
     logger.warning(f"[MAIN] Zep playground not loaded: {e}")
 
+# Optional: Include AWS Bedrock playground if configured
+try:
+    from config import settings
+    if hasattr(settings, 'aws_access_key_id') and settings.aws_access_key_id:
+        from playground_bedrock import bedrock_router
+        app.include_router(bedrock_router, prefix="/api/playground-bedrock", tags=["playground-bedrock"])
+        logger.info("[MAIN] AWS Bedrock playground enabled")
+except Exception as e:
+    logger.warning(f"[MAIN] AWS Bedrock playground not loaded: {e}")
+
 # Startup event
 @app.on_event("startup")
 async def startup_event():

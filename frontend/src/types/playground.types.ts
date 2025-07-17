@@ -51,6 +51,6 @@ export interface TestUser {
   last_used: number
 }
 
-export type MemoryMode = 'none' | 'mem0' | 'zep'
+export type MemoryMode = 'none' | 'mem0' | 'zep' | 'bedrock'
 export type LeftPanelTab = 'settings' | 'sessions'
 export type RightPanelTab = 'analysis' | 'raw' | 'clean'
