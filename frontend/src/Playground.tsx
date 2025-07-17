@@ -242,7 +242,7 @@ export default function Playground() {
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col">
           {/* Chat Windows */}
-          <div className="flex-1 grid grid-cols-3 gap-4 p-4 min-h-0 overflow-hidden">
+          <div className="flex-1 grid grid-cols-4 gap-4 p-4 min-h-0 overflow-hidden">
             <ChatWindow
               title="FullContext"
               mode="none"
