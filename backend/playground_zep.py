@@ -111,15 +111,6 @@ async def generate_zep_stream(
                 {"role": "system", "content": system_content}
             ]
             
-            # Add last 4-6 messages from history if available
-            if memories and hasattr(memories, 'messages') and memories.messages:
-                recent_messages = memories.messages[-6:]  # Get last 6 messages
-                for msg in recent_messages:
-                    messages.append({
-                        "role": "user" if msg.role == "human" else "assistant",
-                        "content": msg.content
-                    })
-            
             # Add current message
             messages.append({"role": "user", "content": message})
             
