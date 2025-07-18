@@ -18,18 +18,13 @@ import {
   RightPanelTab,
   Session,
   TestUser,
-  Message
+  Message,
+  Model,
+  ModelsResponse
 } from './types/playground.types'
 
 // API configuration
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
-
-// Default models
-const DEFAULT_MODELS = [
-  { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', description: 'Latest and fastest GPT-4' },
-  { id: 'gpt-4', name: 'GPT-4', description: 'Classic GPT-4' },
-  { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', description: 'Fast and economical' }
-]
 
 export default function Playground() {
   const navigate = useNavigate()
@@ -45,6 +40,8 @@ export default function Playground() {
     enable_fallback: true,
     auto_switch: false
   })
+  const [models, setModels] = useState<Model[]>([])
+  const [modelsData, setModelsData] = useState<ModelsResponse | null>(null)
   
   // UI state
   const [leftPanelTab, setLeftPanelTab] = useState<LeftPanelTab>('settings')
@@ -71,6 +68,7 @@ export default function Playground() {
   useEffect(() => {
     loadAgents()
     loadTestUsers()
+    loadModels()
   }, [])
   
   // Load sessions when user changes
@@ -93,6 +91,24 @@ export default function Playground() {
       }
     } catch (error) {
       console.error('Failed to load agents:', error)
+    }
+  }
+  
+  const loadModels = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/models`)
+      const data: ModelsResponse = await response.json()
+      setModelsData(data)
+      // Set OpenAI models as default for the model picker
+      setModels(data.openai)
+    } catch (error) {
+      console.error('Failed to load models:', error)
+      // Fallback models
+      setModels([
+        { id: 'gpt-4-turbo', name: 'GPT-4 Turbo' },
+        { id: 'gpt-4', name: 'GPT-4' },
+        { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo' }
+      ])
     }
   }
   
@@ -216,7 +232,7 @@ export default function Playground() {
           selectedAgent={selectedAgent}
           systemPrompt={systemPrompt}
           settings={settings}
-          models={DEFAULT_MODELS}
+          models={models}
           onAgentChange={handleAgentChange}
           onSystemPromptChange={setSystemPrompt}
           onSettingsChange={setSettings}

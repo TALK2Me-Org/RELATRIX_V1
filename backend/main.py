@@ -124,6 +124,7 @@ from chat import chat_router
 from agents import agents_router
 from playground import playground_router
 from database import seed_agents
+from models import get_all_models
 
 # System settings (in-memory for simplicity)
 system_settings = {
@@ -142,6 +143,12 @@ async def update_settings(settings: dict):
     system_settings.update(settings)
     logger.info(f"System settings updated: {system_settings}")
     return system_settings
+
+# Models endpoint
+@app.get("/api/models")
+async def get_models():
+    """Get all available models organized by provider"""
+    return get_all_models()
 
 # Include routers
 app.include_router(auth_router, prefix="/api/auth", tags=["auth"])

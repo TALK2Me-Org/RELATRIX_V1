@@ -64,14 +64,15 @@ export default function AgentManager() {
   const loadModels = async () => {
     try {
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
-      const response = await fetch(`${API_URL}/api/playground/models`)
+      const response = await fetch(`${API_URL}/api/models`)
       const data = await response.json()
-      setModels(data.models || [])
+      // Get OpenAI models for agent configuration
+      setModels(data.openai || [])
     } catch (error) {
       console.error('Failed to load models:', error)
       // Fallback models
       setModels([
-        { id: 'gpt-4-turbo-preview', name: 'GPT-4 Turbo Preview', description: 'Default' },
+        { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', description: 'Default' },
         { id: 'gpt-4', name: 'GPT-4', description: 'Default' },
         { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', description: 'Default' }
       ])

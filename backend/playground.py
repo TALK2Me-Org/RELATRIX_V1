@@ -59,63 +59,6 @@ class PlaygroundResponse(BaseModel):
     debug_info: Dict[str, Any]
 
 
-@playground_router.get("/models")
-async def get_available_models():
-    """
-    Get list of available OpenAI models
-    """
-    try:
-        # Fetch models from OpenAI API
-        models_response = await openai.models.list()
-        
-        # Filter and format chat models
-        chat_models = []
-        model_descriptions = {
-            "gpt-4-turbo": "Najnowszy i najszybszy GPT-4 (128k kontekst)",
-            "gpt-4-turbo-preview": "GPT-4 Turbo z wiedzą do kwietnia 2023",
-            "gpt-4-turbo-2024-04-09": "GPT-4 Turbo - stabilna wersja",
-            "gpt-4": "Klasyczny GPT-4 (8k kontekst)",
-            "gpt-4-32k": "GPT-4 z dużym kontekstem (32k)",
-            "gpt-4-0125-preview": "GPT-4 Preview - styczniowa wersja",
-            "gpt-4-1106-preview": "GPT-4 Preview - listopadowa wersja",
-            "gpt-4o": "GPT-4 Optimized - szybszy i tańszy",
-            "gpt-4o-mini": "GPT-4 Optimized Mini - najszybszy",
-            "gpt-3.5-turbo": "Szybki i ekonomiczny (16k kontekst)",
-            "gpt-3.5-turbo-0125": "Najnowszy GPT-3.5",
-            "gpt-3.5-turbo-1106": "GPT-3.5 - stabilna wersja",
-            "gpt-3.5-turbo-16k": "GPT-3.5 z dużym kontekstem"
-        }
-        
-        for model in models_response.data:
-            # Only include chat models
-            if model.id.startswith(('gpt-4', 'gpt-3.5')):
-                chat_models.append({
-                    "id": model.id,
-                    "name": model.id.replace('-', ' ').title(),
-                    "description": model_descriptions.get(model.id, "Model dostępny w OpenAI")
-                })
-        
-        # Sort by model name (GPT-4 first, then GPT-3.5)
-        chat_models.sort(key=lambda x: (not x['id'].startswith('gpt-4'), x['id']))
-        
-        logger.info(f"[PLAYGROUND] Found {len(chat_models)} chat models")
-        return {"models": chat_models}
-        
-    except Exception as e:
-        logger.error(f"[PLAYGROUND] Error fetching models from OpenAI: {e}")
-        # Return comprehensive fallback list
-        return {
-            "models": [
-                {"id": "gpt-4-turbo", "name": "GPT-4 Turbo", "description": "Najnowszy i najszybszy GPT-4"},
-                {"id": "gpt-4-turbo-preview", "name": "GPT-4 Turbo Preview", "description": "GPT-4 z wiedzą do kwietnia 2023"},
-                {"id": "gpt-4", "name": "GPT-4", "description": "Klasyczny GPT-4 (8k kontekst)"},
-                {"id": "gpt-4-32k", "name": "GPT-4 32K", "description": "GPT-4 z dużym kontekstem"},
-                {"id": "gpt-4o", "name": "GPT-4 Optimized", "description": "Szybszy i tańszy GPT-4"},
-                {"id": "gpt-4o-mini", "name": "GPT-4 Optimized Mini", "description": "Najszybszy wariant GPT-4"},
-                {"id": "gpt-3.5-turbo", "name": "GPT-3.5 Turbo", "description": "Szybki i ekonomiczny"},
-                {"id": "gpt-3.5-turbo-16k", "name": "GPT-3.5 Turbo 16K", "description": "GPT-3.5 z dużym kontekstem"}
-            ]
-        }
 
 
 @playground_router.post("/chat", response_model=PlaygroundResponse)

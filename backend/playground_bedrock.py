@@ -10,6 +10,7 @@ from typing import AsyncGenerator
 from anthropic import AsyncAnthropicBedrock
 
 from config import settings
+from models import get_bedrock_model_id
 
 logger = logging.getLogger(__name__)
 
@@ -45,11 +46,10 @@ async def generate_bedrock_stream(
         return
     
     try:
-        # Always use Claude 3.5 Sonnet for Bedrock
-        # For AWS Bedrock we need the full model ID
-        actual_model = "anthropic.claude-3-5-sonnet-20240620-v1:0"
+        # Convert simple model ID to full AWS Bedrock model ID
+        actual_model = get_bedrock_model_id(model)
         
-        logger.info(f"[BEDROCK] Invoking model: {actual_model}")
+        logger.info(f"[BEDROCK] Invoking model: {model} -> {actual_model}")
         
         # Create streaming response with AsyncAnthropicBedrock
         stream = await bedrock_client.messages.create(
@@ -113,7 +113,7 @@ async def playground_bedrock_sse(
     system_prompt: str = Query(...),
     message: str = Query(...),
     user_id: str = Query(...),
-    model: str = Query(default="anthropic.claude-3-5-sonnet-20240620-v1:0"),
+    model: str = Query(default="claude-3-5-sonnet-20241022"),
     temperature: float = Query(default=0.7)
 ):
     """Playground SSE endpoint with AWS Bedrock"""

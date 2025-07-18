@@ -54,3 +54,18 @@ export interface TestUser {
 export type MemoryMode = 'none' | 'mem0' | 'zep' | 'bedrock'
 export type LeftPanelTab = 'settings' | 'sessions'
 export type RightPanelTab = 'analysis' | 'raw' | 'clean'
+
+export interface Model {
+  id: string
+  name: string
+  description?: string
+}
+
+export interface ModelsResponse {
+  openai: Model[]
+  bedrock: Model[]
+  defaults: {
+    openai: string
+    bedrock: string
+  }
+}
