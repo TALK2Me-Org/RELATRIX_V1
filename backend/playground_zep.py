@@ -60,16 +60,23 @@ async def generate_zep_stream(
         return
     
     try:
-        # 1. Ensure user exists
+        # 1. Ensure user exists and has current name
         try:
             await zep_client.user.get(user_id=user_id)
+            # User exists - update name
+            await zep_client.user.update(
+                user_id=user_id,
+                first_name=user_name
+            )
+            logger.info(f"[ZEP] Updated user: {user_id} with name: {user_name}")
         except:
+            # User doesn't exist - create
             await zep_client.user.add(
                 user_id=user_id,
                 first_name=user_name,
                 metadata={"source": "playground"}
             )
-            logger.info(f"[ZEP] Created user: {user_id}")
+            logger.info(f"[ZEP] Created user: {user_id} with name: {user_name}")
         
         # 2. Create session if doesn't exist
         try:
