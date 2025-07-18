@@ -46,7 +46,8 @@ async def generate_bedrock_stream(
     
     try:
         # Always use Claude 3.5 Sonnet for Bedrock
-        actual_model = "claude-3-5-sonnet-20241022"
+        # For AWS Bedrock we need the full model ID
+        actual_model = "anthropic.claude-3-5-sonnet-20240620-v1:0"
         
         logger.info(f"[BEDROCK] Invoking model: {actual_model}")
         
