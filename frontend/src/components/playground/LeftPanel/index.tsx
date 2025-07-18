@@ -13,7 +13,7 @@ interface LeftPanelProps {
   selectedAgent: Agent | null
   systemPrompt: string
   settings: PlaygroundSettings
-  models: Array<{ id: string; name: string; description: string }>
+  models: Array<{ id: string; name: string; description?: string }>
   onAgentChange: (slug: string) => void
   onSystemPromptChange: (prompt: string) => void
   onSettingsChange: (settings: PlaygroundSettings) => void

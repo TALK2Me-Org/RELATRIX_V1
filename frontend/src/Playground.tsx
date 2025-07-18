@@ -41,7 +41,6 @@ export default function Playground() {
     auto_switch: false
   })
   const [models, setModels] = useState<Model[]>([])
-  const [modelsData, setModelsData] = useState<ModelsResponse | null>(null)
   
   // UI state
   const [leftPanelTab, setLeftPanelTab] = useState<LeftPanelTab>('settings')
@@ -98,7 +97,6 @@ export default function Playground() {
     try {
       const response = await fetch(`${API_URL}/api/models`)
       const data: ModelsResponse = await response.json()
-      setModelsData(data)
       // Set OpenAI models as default for the model picker
       setModels(data.openai)
     } catch (error) {
