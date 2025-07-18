@@ -27,6 +27,7 @@ interface LeftPanelProps {
   currentSessionId?: string | null
   onUserSelect: (user: TestUser) => void
   onUserCreate: () => void
+  onUserUpdate: (userId: string, newName: string) => void
   onSessionSelect: (session: Session) => void
   onSessionDelete: (sessionId: string) => void
 }
@@ -106,6 +107,7 @@ export const LeftPanel: React.FC<LeftPanelProps> = (props) => {
             currentSessionId={props.currentSessionId}
             onUserSelect={props.onUserSelect}
             onUserCreate={props.onUserCreate}
+            onUserUpdate={props.onUserUpdate}
             onSessionSelect={props.onSessionSelect}
             onSessionDelete={props.onSessionDelete}
           />

@@ -49,6 +49,7 @@ async def generate_zep_stream(
     system_prompt: str,
     message: str,
     user_id: str,
+    user_name: str = "User",
     model: str = "gpt-4",
     temperature: float = 0.7
 ) -> AsyncGenerator[str, None]:
@@ -65,6 +66,7 @@ async def generate_zep_stream(
         except:
             await zep_client.user.add(
                 user_id=user_id,
+                first_name=user_name,
                 metadata={"source": "playground"}
             )
             logger.info(f"[ZEP] Created user: {user_id}")
@@ -109,6 +111,15 @@ async def generate_zep_stream(
                 {"role": "system", "content": system_content}
             ]
             
+            # Add last 4-6 messages from history if available
+            if memories and hasattr(memories, 'messages') and memories.messages:
+                recent_messages = memories.messages[-6:]  # Get last 6 messages
+                for msg in recent_messages:
+                    messages.append({
+                        "role": "user" if msg.role == "human" else "assistant",
+                        "content": msg.content
+                    })
+            
             # Add current message
             messages.append({"role": "user", "content": message})
             
@@ -121,7 +132,7 @@ async def generate_zep_stream(
             ]
         
         # Count input tokens
-        input_tokens = sum(len(encoding.encode(str(msg))) for msg in messages)
+        input_tokens = sum(len(encoding.encode(msg.get('content', ''))) for msg in messages)
         
         # 5. Stream from OpenAI
         stream = await openai.chat.completions.create(
@@ -188,6 +199,7 @@ async def playground_zep_sse(
     system_prompt: str = Query(...),
     message: str = Query(...),
     user_id: str = Query(...),
+    user_name: str = Query(default="User"),
     model: str = Query(default="gpt-4"),
     temperature: float = Query(default=0.7)
 ):
@@ -199,6 +211,7 @@ async def playground_zep_sse(
             system_prompt=system_prompt,
             message=message,
             user_id=user_id,
+            user_name=user_name,
             model=model,
             temperature=temperature
         ),

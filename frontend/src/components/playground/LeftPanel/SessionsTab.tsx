@@ -9,6 +9,7 @@ interface SessionsTabProps {
   currentSessionId?: string | null
   onUserSelect: (user: TestUser) => void
   onUserCreate: () => void
+  onUserUpdate: (userId: string, newName: string) => void
   onSessionSelect: (session: Session) => void
   onSessionDelete: (sessionId: string) => void
 }
@@ -20,6 +21,7 @@ export const SessionsTab: React.FC<SessionsTabProps> = ({
   currentSessionId,
   onUserSelect,
   onUserCreate,
+  onUserUpdate,
   onSessionSelect,
   onSessionDelete
 }) => {
@@ -75,7 +77,13 @@ export const SessionsTab: React.FC<SessionsTabProps> = ({
                     : 'hover:bg-gray-50'
                 }`}
               >
-                <div className="font-medium text-sm">{user.name}</div>
+                <input
+                  type="text"
+                  value={user.name}
+                  onChange={(e) => onUserUpdate(user.id, e.target.value)}
+                  onClick={(e) => e.stopPropagation()}
+                  className="font-medium text-sm bg-transparent border-none outline-none focus:bg-white focus:ring-1 focus:ring-blue-400 rounded px-1 py-0.5 w-full"
+                />
                 <div className="text-xs text-gray-500">
                   Created: {formatDate(user.created_at)}
                 </div>

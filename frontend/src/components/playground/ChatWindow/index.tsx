@@ -12,6 +12,7 @@ interface ChatWindowProps {
   settings: PlaygroundSettings
   sessionId?: string
   userId?: string
+  userName?: string
   onSendMessage?: (content: string) => void
   onAgentSwitch?: (agentSlug: string) => void
 }
@@ -27,13 +28,15 @@ export const ChatWindow = React.forwardRef<
   settings,
   sessionId,
   userId,
+  userName,
   onSendMessage,
   onAgentSwitch
 }, ref) => {
   const { messages, streaming, loading, tokens, sendMessage, clearMessages, detectedAgent } = usePlaygroundSSE({
     mode,
     sessionId,
-    userId
+    userId,
+    userName
   })
 
   // Handle auto-switch when agent is detected

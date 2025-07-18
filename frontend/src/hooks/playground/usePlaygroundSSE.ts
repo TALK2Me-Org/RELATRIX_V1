@@ -7,9 +7,10 @@ interface UsePlaygroundSSEProps {
   mode: MemoryMode
   sessionId?: string
   userId?: string
+  userName?: string
 }
 
-export function usePlaygroundSSE({ mode, sessionId, userId }: UsePlaygroundSSEProps) {
+export function usePlaygroundSSE({ mode, sessionId, userId, userName }: UsePlaygroundSSEProps) {
   const [messages, setMessages] = useState<Message[]>([])
   const [streaming, setStreaming] = useState('')
   const [loading, setLoading] = useState(false)
@@ -70,6 +71,9 @@ export function usePlaygroundSSE({ mode, sessionId, userId }: UsePlaygroundSSEPr
       } else if (mode === 'zep' && sessionId && userId) {
         params.append('session_id', sessionId)
         params.append('user_id', userId)
+        if (userName) {
+          params.append('user_name', userName)
+        }
       } else if (mode === 'bedrock' && userId) {
         params.append('user_id', userId)
       } else if (mode === 'none') {

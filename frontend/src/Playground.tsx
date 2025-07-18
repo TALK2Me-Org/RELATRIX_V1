@@ -189,6 +189,25 @@ export default function Playground() {
     localStorage.setItem('playground_users', JSON.stringify(usersObj))
   }
   
+  const updateTestUser = (userId: string, newName: string) => {
+    const updatedUsers = testUsers.map(user => 
+      user.id === userId ? { ...user, name: newName } : user
+    )
+    setTestUsers(updatedUsers)
+    
+    // Update selected user if it's the one being edited
+    if (selectedUser?.id === userId) {
+      setSelectedUser({ ...selectedUser, name: newName })
+    }
+    
+    // Save to localStorage
+    const usersObj = updatedUsers.reduce((acc, u) => {
+      acc[u.id] = u
+      return acc
+    }, {} as Record<string, TestUser>)
+    localStorage.setItem('playground_users', JSON.stringify(usersObj))
+  }
+  
   const createNewSession = () => {
     if (!selectedUser) return
     
@@ -252,6 +271,7 @@ export default function Playground() {
           currentSessionId={sessionId}
           onUserSelect={setSelectedUser}
           onUserCreate={createTestUser}
+          onUserUpdate={updateTestUser}
           onSessionSelect={(session) => {
             setSessionId(session.id)
             // Load session messages into appropriate chat
@@ -296,6 +316,7 @@ export default function Playground() {
               settings={settings}
               sessionId={sessionId || createNewSession()}
               userId={selectedUser?.id}
+              userName={selectedUser?.name}
               ref={(ref) => { if (ref) zepChatRef.current = ref }}
               onSendMessage={(content) => handleChatMessage({ role: 'assistant', content })}
               onAgentSwitch={handleAgentChange}
