@@ -25,6 +25,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
+        "http://localhost:3001",  # LOCAL DEV
         "http://localhost:5173",  # Vite default port
         "http://localhost:8080",
         "https://relatrix-frontend.up.railway.app",

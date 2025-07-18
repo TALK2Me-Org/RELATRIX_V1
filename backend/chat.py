@@ -232,7 +232,8 @@ async def stream_chat(
             # Log full response for debugging
             logger.debug(f"[CHAT] Full response length: {len(full_response)}")
             logger.debug(f"[CHAT] Last 200 chars of response: ...{full_response[-200:]}")
-            logger.debug(f"[CHAT] Response contains JSON: {'{"agent"' in full_response}")
+            json_check = '{"agent"' in full_response
+            logger.debug(f"[CHAT] Response contains JSON: {json_check}")
             if new_agent:
                 logger.info(f"[CHAT] Agent switch detected during streaming: {new_agent}")
             
