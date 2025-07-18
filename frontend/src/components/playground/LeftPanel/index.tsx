@@ -14,6 +14,7 @@ interface LeftPanelProps {
   systemPrompt: string
   settings: PlaygroundSettings
   models: Array<{ id: string; name: string; description?: string }>
+  bedrockModels: Array<{ id: string; name: string; description?: string }>
   onAgentChange: (slug: string) => void
   onSystemPromptChange: (prompt: string) => void
   onSettingsChange: (settings: PlaygroundSettings) => void
@@ -91,6 +92,7 @@ export const LeftPanel: React.FC<LeftPanelProps> = (props) => {
             systemPrompt={props.systemPrompt}
             settings={props.settings}
             models={props.models}
+            bedrockModels={props.bedrockModels}
             onAgentChange={props.onAgentChange}
             onSystemPromptChange={props.onSystemPromptChange}
             onSettingsChange={props.onSettingsChange}

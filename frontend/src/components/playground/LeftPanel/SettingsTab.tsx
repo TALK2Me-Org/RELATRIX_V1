@@ -8,6 +8,7 @@ interface SettingsTabProps {
   systemPrompt: string
   settings: PlaygroundSettings
   models: Array<{ id: string; name: string; description?: string }>
+  bedrockModels: Array<{ id: string; name: string; description?: string }>
   onAgentChange: (slug: string) => void
   onSystemPromptChange: (prompt: string) => void
   onSettingsChange: (settings: PlaygroundSettings) => void
@@ -20,6 +21,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
   systemPrompt,
   settings,
   models,
+  bedrockModels,
   onAgentChange,
   onSystemPromptChange,
   onSettingsChange,
@@ -87,6 +89,25 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
           className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           {models.map(model => (
+            <option key={model.id} value={model.id}>
+              {model.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* AWS Bedrock Model Selection */}
+      <div>
+        <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
+          Model (AWS Bedrock)
+          <HelpIcon tooltip="Model Claude dla okienka AWS Bedrock" />
+        </label>
+        <select
+          value={settings.bedrockModel}
+          onChange={(e) => onSettingsChange({ ...settings, bedrockModel: e.target.value })}
+          className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          {bedrockModels.map(model => (
             <option key={model.id} value={model.id}>
               {model.name}
             </option>

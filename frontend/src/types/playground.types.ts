@@ -20,6 +20,7 @@ export interface Message {
 
 export interface PlaygroundSettings {
   model: string
+  bedrockModel: string
   temperature: number
   show_json: boolean
   enable_fallback: boolean

@@ -57,7 +57,7 @@ sleep 3
 # Start Frontend
 echo -e "${GREEN}🎨 Starting Frontend on http://localhost:3001${NC}"
 cd frontend
-PORT=3001 npm start &
+npm run dev -- --port 3001 &
 FRONTEND_PID=$!
 cd ..
 

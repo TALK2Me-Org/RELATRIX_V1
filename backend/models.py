@@ -6,20 +6,52 @@ Single source of truth for all AI models
 # All available models organized by provider
 MODELS = {
     "openai": [
-        {"id": "gpt-4-turbo", "name": "GPT-4 Turbo", "description": "Najnowszy i najszybszy GPT-4 (128k kontekst)"},
-        {"id": "gpt-4-turbo-preview", "name": "GPT-4 Turbo Preview", "description": "GPT-4 Turbo z wiedzą do kwietnia 2023"},
-        {"id": "gpt-4", "name": "GPT-4", "description": "Klasyczny GPT-4 (8k kontekst)"},
-        {"id": "gpt-4-32k", "name": "GPT-4 32K", "description": "GPT-4 z dużym kontekstem"},
-        {"id": "gpt-4o", "name": "GPT-4 Optimized", "description": "Szybszy i tańszy GPT-4"},
-        {"id": "gpt-4o-mini", "name": "GPT-4 Optimized Mini", "description": "Najszybszy wariant GPT-4"},
-        {"id": "gpt-3.5-turbo", "name": "GPT-3.5 Turbo", "description": "Szybki i ekonomiczny (16k kontekst)"},
-        {"id": "gpt-3.5-turbo-16k", "name": "GPT-3.5 Turbo 16K", "description": "GPT-3.5 z dużym kontekstem"}
+        # GPT-4.1 Series (2025)
+        {"id": "gpt-4.1", "name": "GPT-4.1"},
+        {"id": "gpt-4.1-mini", "name": "GPT-4.1 Mini"},
+        {"id": "gpt-4.1-nano", "name": "GPT-4.1 Nano"},
+        
+        # GPT-4.5
+        {"id": "gpt-4.5-preview", "name": "GPT-4.5 Preview"},
+        
+        # O-series (Reasoning models)
+        {"id": "o1", "name": "O1"},
+        {"id": "o3", "name": "O3"},
+        {"id": "o3-mini", "name": "O3 Mini"},
+        {"id": "o3-pro", "name": "O3 Pro"},
+        {"id": "o4-mini", "name": "O4 Mini"},
+        
+        # GPT-4o Series
+        {"id": "gpt-4o", "name": "GPT-4o"},
+        {"id": "gpt-4o-2024-08-06", "name": "GPT-4o (08-2024)"},
+        {"id": "gpt-4o-2024-05-13", "name": "GPT-4o (05-2024)"},
+        {"id": "gpt-4o-mini", "name": "GPT-4o Mini"},
+        {"id": "gpt-4o-mini-2024-07-18", "name": "GPT-4o Mini (07-2024)"},
+        {"id": "chatgpt-4o-latest", "name": "ChatGPT-4o Latest"},
+        
+        # GPT-4 Turbo
+        {"id": "gpt-4-turbo", "name": "GPT-4 Turbo"},
+        {"id": "gpt-4-turbo-2024-04-09", "name": "GPT-4 Turbo (04-2024)"},
+        {"id": "gpt-4-turbo-preview", "name": "GPT-4 Turbo Preview"},
+        
+        # GPT-4 Standard
+        {"id": "gpt-4", "name": "GPT-4"},
+        {"id": "gpt-4-32k", "name": "GPT-4 32K"},
+        {"id": "gpt-4-0125-preview", "name": "GPT-4 (01-2025)"},
+        {"id": "gpt-4-1106-preview", "name": "GPT-4 (11-2024)"},
+        
+        # GPT-3.5 Turbo
+        {"id": "gpt-3.5-turbo", "name": "GPT-3.5 Turbo"},
+        {"id": "gpt-3.5-turbo-16k", "name": "GPT-3.5 Turbo 16K"},
+        {"id": "gpt-3.5-turbo-0125", "name": "GPT-3.5 Turbo (01-2025)"},
+        {"id": "gpt-3.5-turbo-1106", "name": "GPT-3.5 Turbo (11-2024)"},
+        {"id": "gpt-3.5-turbo-instruct", "name": "GPT-3.5 Turbo Instruct"}
     ],
     "bedrock": [
-        {"id": "claude-3-5-sonnet-20241022", "name": "Claude 3.5 Sonnet", "description": "Najnowszy Claude, świetna równowaga mocy i szybkości"},
-        {"id": "claude-3-haiku-20240307", "name": "Claude 3 Haiku", "description": "Najszybszy model Claude, idealny do prostych zadań"},
-        {"id": "claude-3-opus-20240229", "name": "Claude 3 Opus", "description": "Najpotężniejszy Claude, do złożonych zadań"},
-        {"id": "claude-3-sonnet-20240229", "name": "Claude 3 Sonnet", "description": "Zbalansowany model Claude"}
+        {"id": "claude-3-5-sonnet-20241022", "name": "Claude 3.5 Sonnet"},
+        {"id": "claude-3-haiku-20240307", "name": "Claude 3 Haiku"},
+        {"id": "claude-3-opus-20240229", "name": "Claude 3 Opus"},
+        {"id": "claude-3-sonnet-20240229", "name": "Claude 3 Sonnet"}
     ]
 }
 

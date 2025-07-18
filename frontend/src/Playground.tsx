@@ -34,13 +34,15 @@ export default function Playground() {
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
   const [systemPrompt, setSystemPrompt] = useState('')
   const [settings, setSettings] = useState<PlaygroundSettings>({
-    model: 'gpt-4',
+    model: 'gpt-4-turbo',
+    bedrockModel: 'claude-3-5-sonnet-20241022',
     temperature: 0.7,
     show_json: true,
     enable_fallback: true,
     auto_switch: false
   })
   const [models, setModels] = useState<Model[]>([])
+  const [bedrockModels, setBedrockModels] = useState<Model[]>([])
   
   // UI state
   const [leftPanelTab, setLeftPanelTab] = useState<LeftPanelTab>('settings')
@@ -97,8 +99,9 @@ export default function Playground() {
     try {
       const response = await fetch(`${API_URL}/api/models`)
       const data: ModelsResponse = await response.json()
-      // Set OpenAI models as default for the model picker
+      // Set models for both providers
       setModels(data.openai)
+      setBedrockModels(data.bedrock)
     } catch (error) {
       console.error('Failed to load models:', error)
       // Fallback models
@@ -106,6 +109,10 @@ export default function Playground() {
         { id: 'gpt-4-turbo', name: 'GPT-4 Turbo' },
         { id: 'gpt-4', name: 'GPT-4' },
         { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo' }
+      ])
+      setBedrockModels([
+        { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet' },
+        { id: 'claude-3-haiku-20240307', name: 'Claude 3 Haiku' }
       ])
     }
   }
@@ -231,6 +238,7 @@ export default function Playground() {
           systemPrompt={systemPrompt}
           settings={settings}
           models={models}
+          bedrockModels={bedrockModels}
           onAgentChange={handleAgentChange}
           onSystemPromptChange={setSystemPrompt}
           onSettingsChange={setSettings}

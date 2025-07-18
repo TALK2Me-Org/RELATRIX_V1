@@ -46,11 +46,14 @@ export const ChatWindow = React.forwardRef<
   const handleSend = (content: string) => {
     if (!agent) return
     
+    // Use bedrock model for bedrock mode, otherwise use regular model
+    const activeModel = mode === 'bedrock' ? settings.bedrockModel : settings.model
+    
     sendMessage(
       content,
       agent.slug,
       systemPrompt,
-      settings.model,
+      activeModel,
       settings.temperature
     )
     
